@@ -3,14 +3,14 @@
 ## Phase 1: 환경 설정 및 분석 (Setup & Analysis)
 - [x] 프로젝트 초기화 (`go mod init`)
 - [x] 요구사항 정의서 작성 (`REQUIREMENTS.md`)
-- [ ] `.gitignore` 및 `.env` 설정
-- [ ] `slackdump` 소스 코드 분석 (구조, API 호출 방식, 라이선스 확인)
-- [ ] 기술 스택 확정 (TUI 라이브러리: Bubble Tea 등)
+- [x] `.gitignore` 및 `.env` 설정 (Cookie 인증 방식 적용)
+- [x] GitHub Repository 생성 및 연동
+- [ ] `slackdump` 라이브러리 연동 (`go get`)
 
 ## Phase 2: 프로토타입 (Prototype)
-- [ ] Slack API 연동 테스트 (User Token으로 채널 목록 가져오기)
+- [x] Slack API 연동 테스트 (Cookie 인증 성공)
 - [ ] Bubble Tea를 이용한 기본 TUI 구현 (채널 목록 표시 및 선택)
-- [ ] 선택된 채널 ID 출력 기능 구현
+- [ ] `slackdump`의 내부 로직을 활용하여 채널 목록 가져오기
 
 ## Phase 3: 핵심 기능 구현 (Core Implementation)
 - [ ] 메시지 다운로드 로직 구현 (Pagination, Rate Limit 처리)
