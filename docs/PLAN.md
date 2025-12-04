@@ -5,12 +5,12 @@
 - [x] 요구사항 정의서 작성 (`REQUIREMENTS.md`)
 - [x] `.gitignore` 및 `.env` 설정 (Cookie 인증 방식 적용)
 - [x] GitHub Repository 생성 및 연동
-- [ ] `slackdump` 라이브러리 연동 (`go get`)
+- [x] `slack-go/slack` 라이브러리 연동 (공식 SDK 사용, `slackdump` 로직 참고)
 
 ## Phase 2: 프로토타입 (Prototype)
 - [x] Slack API 연동 테스트 (Cookie 인증 성공)
-- [ ] Bubble Tea를 이용한 기본 TUI 구현 (채널 목록 표시 및 선택)
-- [ ] `slackdump`의 내부 로직을 활용하여 채널 목록 가져오기
+- [x] Bubble Tea를 이용한 기본 TUI 구현 (채널 목록 표시 및 선택)
+- [x] 채널 목록 가져오기 (`GetConversations` API 사용)
 
 ## Phase 3: 핵심 기능 구현 (Core Implementation)
 - [ ] 메시지 다운로드 로직 구현 (Pagination, Rate Limit 처리)

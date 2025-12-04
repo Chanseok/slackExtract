@@ -8,12 +8,11 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 
 ### 2.1 인증 (Authentication)
 - [x] **Cookie 인증 지원:** Slack의 보안 정책 강화로 인해 User Token(`xoxp-`) 발급이 어려워짐에 따라, 브라우저 쿠키(`d` cookie)와 클라이언트 토큰(`xoxc-`)을 이용한 인증 방식을 사용한다.
-- [ ] **보안:** 토큰과 쿠키는 소스코드에 저장하지 않으며, `.env` 파일을 통해 로컬에서만 관리한다.
+- [x] **보안:** 토큰과 쿠키는 소스코드에 저장하지 않으며, `.env` 파일을 통해 로컬에서만 관리한다. (`.gitignore`에 `.env` 포함됨)
 
 ### 2.2 채널 탐색 (Discovery)
-- [ ] **채널 목록 조회:** Public Channels, Private Channels, Direct Messages(MPIM/IM) 목록을 가져온다.
-- [ ] **채널 목록 조회:** Public Channels, Private Channels, Direct Messages(MPIM/IM) 목록을 가져온다.
-- [ ] **Interactive Selection:** CLI 화면에서 화살표 키로 추출할 채널을 다중 선택(Multi-select)하거나 전체 선택할 수 있다.
+- [x] **채널 목록 조회:** Public Channels, Private Channels, Direct Messages(MPIM/IM) 목록을 가져온다.
+- [x] **Interactive Selection:** CLI 화면에서 화살표 키로 추출할 채널을 다중 선택(Multi-select)하거나 전체 선택할 수 있다. (Bubble Tea TUI 구현 완료)
 
 ### 2.3 데이터 추출 (Extraction)
 - [ ] **메시지 수집:** 선택된 채널의 메시지 히스토리를 가져온다.
@@ -37,7 +36,7 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [ ] **멀티 플랫폼:** macOS와 Windows에서 동일하게 동작하는 단일 바이너리를 제공한다.
 
 ### 3.2 사용자 경험 (UX)
-- [ ] **TUI (Text User Interface):** `Bubble Tea` 라이브러리를 활용하여 미려하고 직관적인 CLI 환경을 제공한다.
+- [x] **TUI (Text User Interface):** `Bubble Tea` 라이브러리를 활용하여 미려하고 직관적인 CLI 환경을 제공한다. (기본 구현 완료)
 - [ ] **진행 상황 표시:** 다운로드 및 변환 진행률(Progress Bar)을 시각적으로 보여준다.
 
 ### 3.3 개발 및 유지보수
