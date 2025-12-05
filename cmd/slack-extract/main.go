@@ -28,21 +28,30 @@ func initialModel(client *slack.Client) (model, error) {
 	// types: public_channel, private_channel, mpim, im
 	params := &slack.GetConversationsParameters{
 		Types: []string{"public_channel", "private_channel", "mpim", "im"},
-		Limit: 1000, // Fetch up to 1000 channels for now
+		Limit: 1000, // Fetch up to 1000 channels per page
 	}
 
-	channels, _, err := client.GetConversations(params)
-	if err != nil {
-		return model{}, err
+	var allChannels []slack.Channel
+	for {
+		channels, nextCursor, err := client.GetConversations(params)
+		if err != nil {
+			return model{}, err
+		}
+		allChannels = append(allChannels, channels...)
+
+		if nextCursor == "" {
+			break
+		}
+		params.Cursor = nextCursor
 	}
 
 	// Sort channels by name
-	sort.Slice(channels, func(i, j int) bool {
-		return channels[i].Name < channels[j].Name
+	sort.Slice(allChannels, func(i, j int) bool {
+		return allChannels[i].Name < allChannels[j].Name
 	})
 
 	return model{
-		channels: channels,
+		channels: allChannels,
 		selected: make(map[string]struct{}),
 	}, nil
 }
