@@ -13,8 +13,9 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 ### 2.2 채널 탐색 및 관리 (Discovery & Management)
 - [x] **채널 목록 조회:** Public Channels, Private Channels, Direct Messages(MPIM/IM) 목록을 가져온다.
 - [x] **Interactive Selection:** CLI 화면에서 화살표 키로 추출할 채널을 다중 선택(Multi-select)하거나 전체 선택할 수 있다.
-- [ ] **로컬 캐싱 (Channel Caching):** 채널 목록 및 속성(Archived 여부, 멤버 수 등)을 `channels.json`에 캐싱하여 실행 속도를 높이고 API 호출을 최소화한다.
-- [ ] **필터링 및 정렬:** Archived 채널 숨기기, 이름순/멤버순 정렬 기능을 제공한다.
+- [x] **로컬 캐싱 (Channel Caching):** 채널 목록 및 속성(Archived 여부, 멤버 수 등)을 `channels.json`에 캐싱하여 실행 속도를 높이고 API 호출을 최소화한다.
+- [x] **필터링:** 필터 메뉴(`f` 키)를 통해 채널 유형별(Public/Private/Archived/DM) 표시 여부를 토글할 수 있다.
+- [x] **검색:** `/` 키를 눌러 채널 이름으로 실시간 검색할 수 있다.
 
 ### 2.3 데이터 추출 (Extraction)
 - [x] **메시지 수집:** 선택된 채널의 메시지 히스토리를 가져온다. (`GetConversationHistory` + Pagination)
@@ -44,6 +45,8 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 
 ### 3.2 사용자 경험 (UX)
 - [x] **TUI (Text User Interface):** `Bubble Tea` 라이브러리를 활용하여 미려하고 직관적인 CLI 환경을 제공한다.
+- [x] **Lipgloss 스타일링:** 채널 유형별 색상 구분, 선택 상태 하이라이트 등 시각적 개선 적용.
+- [x] **필터 메뉴 모드:** `f` 키로 필터 설정 메뉴를 열어 채널 속성별 표시 여부를 토글할 수 있다.
 - [ ] **진행 상황 표시:** 다운로드 및 변환 진행률(Progress Bar)을 시각적으로 보여준다.
 
 ### 3.3 아키텍처 및 코드 품질 (Architecture & Code Quality)
