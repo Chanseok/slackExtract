@@ -13,9 +13,9 @@
 - [x] 채널 목록 가져오기 (`GetConversations` API 사용)
 - [x] TUI 개선: 페이지네이션(Pagination), 스크롤링(Scrolling), 전체화면(AltScreen) 적용
 
-## Phase 3: 핵심 기능 구현 (Core Implementation) ⬅️ **현재 단계 (스레드 구현 예정)**
+## Phase 3: 핵심 기능 구현 (Core Implementation) ⬅️ **현재 단계**
 - [x] **메시지 다운로드:** 선택된 채널의 히스토리 가져오기 (`GetConversationHistory` + Pagination)
-- [ ] **스레드 다운로드:** 각 메시지의 댓글(Thread) 가져오기 (`GetConversationReplies`)
+- [x] **스레드 다운로드:** 각 메시지의 댓글(Thread) 가져오기 (`GetConversationReplies`)
 - [x] **사용자 매핑:** User ID를 실제 이름으로 변환 (`GetUsersPaginated` + JSON 캐싱)
 - [x] **Markdown 변환:** 기본 Markdown 포맷 적용 (사용자 멘션 치환 포함)
 - [x] **파일 저장:** `export/{채널명}.md` 구조로 저장

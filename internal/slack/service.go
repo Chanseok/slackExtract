@@ -9,6 +9,12 @@ import (
 	"github.com/slack-go/slack"
 )
 
+// Message wraps slack.Message to include full reply history
+type Message struct {
+	slack.Message
+	Replies []slack.Message
+}
+
 // CachedChannel stores channel info for local caching
 type CachedChannel struct {
 	ID         string `json:"id"`
@@ -155,19 +161,40 @@ func FetchUsers(client *slack.Client) (map[string]string, error) {
 	return userMap, nil
 }
 
-func FetchHistory(client *slack.Client, channelID string) ([]slack.Message, error) {
-	var allMessages []slack.Message
+func FetchHistory(client *slack.Client, channelID string) ([]Message, error) {
+	var allMessages []Message
 	params := &slack.GetConversationHistoryParameters{
 		ChannelID: channelID,
 		Limit:     1000,
 	}
 
+	fmt.Println("  Fetching messages...")
 	for {
 		history, err := client.GetConversationHistory(params)
 		if err != nil {
 			return nil, err
 		}
-		allMessages = append(allMessages, history.Messages...)
+		
+		for _, msg := range history.Messages {
+			richMsg := Message{Message: msg}
+			
+			// Fetch thread replies if any
+			if msg.ReplyCount > 0 {
+				fmt.Printf("    Fetching %d replies for thread %s...\n", msg.ReplyCount, msg.Timestamp)
+				replies, _, _, err := client.GetConversationReplies(&slack.GetConversationRepliesParameters{
+					ChannelID: channelID,
+					Timestamp: msg.Timestamp,
+					Limit:     1000, // Assuming threads aren't huge, but might need pagination too
+				})
+				if err == nil && len(replies) > 1 {
+					// replies[0] is the parent message itself, so we skip it
+					richMsg.Replies = replies[1:]
+				} else if err != nil {
+					fmt.Printf("    Warning: Failed to fetch replies: %v\n", err)
+				}
+			}
+			allMessages = append(allMessages, richMsg)
+		}
 
 		if !history.HasMore {
 			break
