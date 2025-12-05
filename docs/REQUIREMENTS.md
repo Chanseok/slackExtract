@@ -25,8 +25,13 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 ### 2.4 변환 및 저장 (Conversion & Storage)
 - [x] **Markdown 변환:** Slack 전용 포맷(mrkdwn)을 표준 Markdown으로 변환한다.
     - [x] 사용자 멘션 (@User) -> 이름으로 치환 (미확인 시 "Guy XXXX"로 표시)
-    - [ ] 채널 링크 (#Channel) -> 텍스트로 치환
-    - [ ] 스타일 (Bold, Italic, Strike, Code) 유지
+    - [x] **텍스트 정제 (Text Cleaning):**
+        - 채널 링크 (`<#C123|general>`) -> 텍스트(`#general`)로 치환
+        - URL 링크 (`<http://...|Text>`) -> Markdown 링크(`[Text](http://...)`)로 치환
+        - HTML 엔티티 (`&lt;`, `&gt;`, `&amp;`) 디코딩
+    - [x] **LLM 최적화:**
+        - 시스템 메시지(입/퇴장 등) 필터링
+        - 날짜별 헤더 그룹핑
 - [x] **파일 저장:**
     - 구조: `./export/{ChannelName}.md`
     - (옵션) 이미지/첨부파일 다운로드 및 로컬 링크 처리
@@ -37,6 +42,22 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [x] **로컬 캐싱:** 사용자 목록을 `users.json` 파일에 캐싱하여 API 호출을 최소화한다.
 - [x] **Pagination 지원:** 대규모 워크스페이스의 모든 사용자를 빠짐없이 가져온다.
 - [ ] **수동 갱신:** CLI 명령어 또는 캐시 파일 삭제를 통해 사용자 목록을 갱신할 수 있다.
+
+### 2.6 LLM 분석 (LLM Analysis)
+- [ ] **다국어 처리:**
+    - 언어 자동 감지 (영어, 네덜란드어, 기타)
+    - 비영어 메시지는 영어 번역과 원문을 함께 병기
+    - 최종 분석 결과는 한국어로 출력
+- [ ] **Topic 분석:**
+    - 주요 Topic 자동 추출 및 클러스터링
+    - 중요도 점수 산정 기준: 스레드 길이, 이모지 반응 수, 특정 키워드("urgent", "important", "blocker" 등)
+    - Topic별 핵심 요약 생성
+- [ ] **의견 분석:**
+    - 긍정/부정/중립 의견 분류 (Sentiment Analysis)
+    - 주요 논쟁점 및 합의점 하이라이트
+- [ ] **인물 분석:**
+    - 인물별 Topic 참여도 및 발언 빈도 통계
+    - 주요 기여자(Key Contributors) 식별
 
 ## 3. 비기능적 요구사항 (Non-Functional Requirements)
 

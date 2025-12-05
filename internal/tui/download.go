@@ -44,8 +44,9 @@ func startDownload(m Model) tea.Cmd {
 					AllDone:     false,
 				}
 
-				// Fetch History
-				msgs, err := slack.FetchHistoryWithProgress(m.SlackClient, channelID, func(current, total int, status string) {
+				// Fetch History with retry support
+				retryCfg := slack.DefaultRetryConfig()
+				msgs, err := slack.FetchHistoryWithRetryAndProgress(m.SlackClient, channelID, retryCfg, func(current, total int, status string) {
 					m.ProgressChannel <- ProgressMsg{
 						ChannelName: channelName,
 						Current:     current,

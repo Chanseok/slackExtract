@@ -13,11 +13,47 @@
 - [x] 채널 목록 가져오기 (`GetConversations` API 사용)
 - [x] TUI 개선: 페이지네이션(Pagination), 스크롤링(Scrolling), 전체화면(AltScreen) 적용
 
-## Phase 3: 핵심 기능 구현 (Core Implementation) ⬅️ **현재 단계**
+## Phase 3: 핵심 기능 구현 (Core Implementation)
 - [x] **메시지 다운로드:** 선택된 채널의 히스토리 가져오기 (`GetConversationHistory` + Pagination)
 - [x] **스레드 다운로드:** 각 메시지의 댓글(Thread) 가져오기 (`GetConversationReplies`)
 - [x] **사용자 매핑:** User ID를 실제 이름으로 변환 (`GetUsersPaginated` + JSON 캐싱)
 - [x] **Markdown 변환:** 기본 Markdown 포맷 적용 (사용자 멘션 치환 포함)
+
+## Phase 4: 데이터 품질 및 안정성 강화 (Data Quality & Robustness)
+- [x] **텍스트 정제 (Text Cleaning):** LLM 학습/분석 효율을 위한 전처리
+  - [x] 채널 링크 치환 (`<#C123|general>` -> `#general`)
+  - [x] URL 포맷 표준화 (`<url|text>` -> `[text](url)`)
+  - [x] HTML 엔티티 디코딩 (`&lt;`, `&gt;` 등)
+  - [x] 시스템 메시지(Join/Leave 등) 필터링
+- [x] **LLM 친화적 포맷팅:**
+  - [x] 메타 데이터 헤더 추가 (채널명, 메시지 수 등)
+  - [x] 날짜별 그룹핑 (Date Headers)
+- [x] **안정성 강화:**
+  - [x] Rate Limit (429) 자동 재시도 로직 (Exponential Backoff)
+
+## Phase 5: 고급 기능 및 최적화 (Advanced & Optimization)
+- [x] **다운로드 진행률 표시 (Progress Bar):**
+  - [x] TUI 내에서 다운로드 상태 시각화 (Progress Bar)
+  - [x] 현재 처리 중인 채널 및 메시지 수 표시
+  - [x] 예상 소요 시간 (ETA) 계산 및 표시
+- [x] **첨부파일 처리:** 이미지 및 파일 다운로드 옵션
+- [ ] **코드 구조 개선:** 패키지 의존성 정리 및 리팩토링
+
+## Phase 6: LLM 분석 파이프라인 (LLM Analysis Pipeline)
+- [ ] **다국어 처리 (Multilingual Support):**
+  - [ ] 언어 감지 (영어/네덜란드어/기타)
+  - [ ] 비영어 메시지: 영어 번역 + 원문 병기
+  - [ ] 최종 요약은 한국어로 출력
+- [ ] **Topic 분석 (Topic Analysis):**
+  - [ ] 주요 Topic 자동 추출 (Clustering)
+  - [ ] Topic별 중요도 점수 산정 (스레드 길이, 반응 수, 키워드 기반)
+  - [ ] Topic별 핵심 요약 생성
+- [ ] **의견 분석 (Sentiment Analysis):**
+  - [ ] 긍정/부정/중립 의견 분류
+  - [ ] 주요 논쟁점 하이라이트
+- [ ] **인물 분석 (Contributor Analysis):**
+  - [ ] 인물별 Topic 참여도 통계
+  - [ ] 주요 기여자 식별
 - [x] **파일 저장:** `export/{채널명}.md` 구조로 저장
 
 ## Phase 3.5: 로컬 캐싱 시스템 (Local Caching)
