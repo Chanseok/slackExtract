@@ -13,7 +13,7 @@
 - [x] 채널 목록 가져오기 (`GetConversations` API 사용)
 - [x] TUI 개선: 페이지네이션(Pagination), 스크롤링(Scrolling), 전체화면(AltScreen) 적용
 
-## Phase 3: 핵심 기능 구현 (Core Implementation)
+## Phase 3: 핵심 기능 구현 (Core Implementation) ⬅️ **현재 단계 (스레드 구현 예정)**
 - [x] **메시지 다운로드:** 선택된 채널의 히스토리 가져오기 (`GetConversationHistory` + Pagination)
 - [ ] **스레드 다운로드:** 각 메시지의 댓글(Thread) 가져오기 (`GetConversationReplies`)
 - [x] **사용자 매핑:** User ID를 실제 이름으로 변환 (`GetUsersPaginated` + JSON 캐싱)
@@ -28,7 +28,7 @@
 - [ ] **캐시 갱신 명령:** 사용자가 명시적으로 캐시를 갱신할 수 있는 옵션 제공
   - 예: `--refresh-users`, `--refresh-channels` 또는 TUI 메뉴 (`r` 키)
 
-## Phase 4: TUI 개선 및 사용성 (TUI & Usability) ⬅️ **현재 단계**
+## Phase 4: TUI 개선 및 사용성 (TUI & Usability)
 
 ### 4.1 시각적 개선 (Visual Enhancement)
 - [ ] **Lipgloss 스타일링:** 컬러 테마, 테두리, 하이라이트 적용
@@ -77,28 +77,7 @@
 1. **[완료]** Lipgloss 스타일링 (색상, 테두리, 하이라이트)
 2. **[완료]** 채널 정보 표시 개선 (유형, 멤버 수, 상태)
 3. **[완료]** 검색 및 필터링 기능 (기본 검색)
-4. **[높음]** **필터 메뉴 모드 (속성 기반 필터링)**
-5. **[중간]** 스마트 내보내기 (폴더 그룹핑)
-6. **[중간]** 상태바 및 도움말 바
-
-### 4.4 UI 레이아웃 & 필터 메뉴
-```
-┌─ Slack Extract ──────────────────────────────────────┐
-│ ... (Channel List) ...                               │
-├──────────────────────────────────────────────────────┤
-│ [ Filter Settings ]                                  │
-│  [x] Show Public Channels                            │
-│  [ ] Show Archived Channels  <-- (Toggle with Space) │
-│  [x] Show Private Channels                           │
-│  [x] Show DMs                                        │
-└──────────────────────────────────────────────────────┘
-```
-
-### 4.5 구현 우선순위
-1. **[완료]** Lipgloss 스타일링 (색상, 테두리, 하이라이트)
-2. **[완료]** 채널 정보 표시 개선 (유형, 멤버 수, 상태)
-3. **[완료]** 검색 및 필터링 기능 (기본 검색)
-4. **[높음]** **필터 메뉴 모드 (속성 기반 필터링)**
+4. **[완료]** **필터 메뉴 모드 (속성 기반 필터링)**
 5. **[중간]** 스마트 내보내기 (폴더 그룹핑)
 6. **[중간]** 상태바 및 도움말 바
 

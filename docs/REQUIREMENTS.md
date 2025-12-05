@@ -24,7 +24,7 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 
 ### 2.4 변환 및 저장 (Conversion & Storage)
 - [x] **Markdown 변환:** Slack 전용 포맷(mrkdwn)을 표준 Markdown으로 변환한다.
-    - [x] 사용자 멘션 (@User) -> 이름으로 치환
+    - [x] 사용자 멘션 (@User) -> 이름으로 치환 (미확인 시 "Guy XXXX"로 표시)
     - [ ] 채널 링크 (#Channel) -> 텍스트로 치환
     - [ ] 스타일 (Bold, Italic, Strike, Code) 유지
 - [x] **파일 저장:**
