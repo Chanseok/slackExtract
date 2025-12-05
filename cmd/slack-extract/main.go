@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
@@ -208,8 +212,180 @@ func main() {
 
 	// Run Bubble Tea Program
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	finalModel, err := p.Run()
+	if err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
+
+	// --- Export Logic ---
+	m = finalModel.(model)
+	if len(m.selected) == 0 {
+		fmt.Println("No channels selected.")
+		return
+	}
+
+	fmt.Printf("\nStarting export for %d channels...\n", len(m.selected))
+
+	// Fetch users for mapping
+	fmt.Println("Fetching user list for mapping...")
+	userMap, err := fetchUsers(api)
+	if err != nil {
+		fmt.Printf("Warning: Could not fetch users: %v\n", err)
+		userMap = make(map[string]string)
+	} else {
+		fmt.Printf("  -> Fetched %d users.\n", len(userMap))
+	}
+
+	for channelID := range m.selected {
+		// Find channel name for display
+		channelName := channelID
+		for _, ch := range m.channels {
+			if ch.ID == channelID {
+				channelName = ch.Name
+				break
+			}
+		}
+
+		fmt.Printf("Processing #%s (%s)...\n", channelName, channelID)
+		msgs, err := fetchHistory(api, channelID)
+		if err != nil {
+			fmt.Printf("  Error fetching history: %v\n", err)
+			continue
+		}
+		fmt.Printf("  -> Successfully fetched %d messages.\n", len(msgs))
+
+		// Save to file
+		err = saveToFile(channelName, msgs, userMap)
+		if err != nil {
+			fmt.Printf("  Error saving file: %v\n", err)
+		} else {
+			fmt.Printf("  -> Saved to export/%s.md\n", channelName)
+		}
+	}
+}
+
+func fetchUsers(client *slack.Client) (map[string]string, error) {
+	cacheFile := "users.json"
+	userMap := make(map[string]string)
+
+	// 1. Try to load from cache
+	if _, err := os.Stat(cacheFile); err == nil {
+		data, err := os.ReadFile(cacheFile)
+		if err == nil {
+			if err := json.Unmarshal(data, &userMap); err == nil {
+				fmt.Println("Loaded user list from cache (users.json).")
+				return userMap, nil
+			}
+		}
+	}
+
+	// 2. Fetch from API (with pagination)
+	fmt.Println("Fetching user list from Slack API...")
+	var allUsers []slack.User
+	limit := 1000
+	cursor := ""
+
+	for {
+		users, nextCursor, err := client.GetUsersPaginated(slack.GetUsersOptionLimit(limit), slack.GetUsersOptionCursor(cursor))
+		if err != nil {
+			return nil, err
+		}
+		allUsers = append(allUsers, users...)
+
+		if nextCursor == "" {
+			break
+		}
+		cursor = nextCursor
+		fmt.Printf("  ...fetched %d users so far\n", len(allUsers))
+	}
+
+	for _, u := range allUsers {
+		userMap[u.ID] = u.RealName
+	}
+
+	// 3. Save to cache
+	data, err := json.MarshalIndent(userMap, "", "  ")
+	if err == nil {
+		_ = os.WriteFile(cacheFile, data, 0644)
+		fmt.Println("Saved user list to cache (users.json).")
+	}
+
+	return userMap, nil
+}
+
+func saveToFile(channelName string, msgs []slack.Message, userMap map[string]string) error {
+	// Create export directory if not exists
+	if err := os.MkdirAll("export", 0755); err != nil {
+		return err
+	}
+
+	f, err := os.Create(fmt.Sprintf("export/%s.md", channelName))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Reverse messages to show oldest first
+	for i := len(msgs) - 1; i >= 0; i-- {
+		msg := msgs[i]
+		
+		// 1. Format Time
+		floatTs, _ := strconv.ParseFloat(msg.Timestamp, 64)
+		ts := time.Unix(int64(floatTs), 0)
+		timeStr := ts.Format("2006-01-02 15:04:05")
+
+		// 2. Resolve User Name
+		userName := userMap[msg.User]
+		if userName == "" {
+			userName = msg.User // Fallback to ID
+			if msg.BotID != "" {
+				userName = fmt.Sprintf("%s (Bot)", msg.Username)
+			}
+		}
+
+		// 3. Replace Mentions in Text
+		text := resolveMentions(msg.Text, userMap)
+
+		// Simple Markdown format
+		_, err := fmt.Fprintf(f, "### %s (%s)\n%s\n\n---\n\n", userName, timeStr, text)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func resolveMentions(text string, userMap map[string]string) string {
+	// Regex to find <@U...>
+	re := regexp.MustCompile(`<@(U[A-Z0-9]+)>`)
+	return re.ReplaceAllStringFunc(text, func(match string) string {
+		id := match[2 : len(match)-1] // remove <@ and >
+		if name, ok := userMap[id]; ok {
+			return "@" + name
+		}
+		return match
+	})
+}
+
+func fetchHistory(client *slack.Client, channelID string) ([]slack.Message, error) {
+	var allMessages []slack.Message
+	params := &slack.GetConversationHistoryParameters{
+		ChannelID: channelID,
+		Limit:     1000,
+	}
+
+	for {
+		history, err := client.GetConversationHistory(params)
+		if err != nil {
+			return nil, err
+		}
+		allMessages = append(allMessages, history.Messages...)
+
+		if !history.HasMore {
+			break
+		}
+		params.Cursor = history.ResponseMetaData.NextCursor
+	}
+	return allMessages, nil
 }

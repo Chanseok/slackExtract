@@ -11,19 +11,27 @@
 - [x] Slack API 연동 테스트 (Cookie 인증 성공)
 - [x] Bubble Tea를 이용한 기본 TUI 구현 (채널 목록 표시 및 선택)
 - [x] 채널 목록 가져오기 (`GetConversations` API 사용)
+- [x] TUI 개선: 페이지네이션(Pagination), 스크롤링(Scrolling), 전체화면(AltScreen) 적용
 
 ## Phase 3: 핵심 기능 구현 (Core Implementation)
-- [ ] 메시지 다운로드 로직 구현 (Pagination, Rate Limit 처리)
-- [ ] 스레드(Thread) 다운로드 로직 구현
-- [ ] 사용자 정보(User List) 캐싱 및 ID 매핑 로직 구현
-- [ ] Slack mrkdwn -> Markdown 변환기 구현
+- [ ] **TUI 디자인 개선:** `Lipgloss`를 활용한 컬러 테마 및 스타일 적용 (시인성 향상)
+- [x] **메시지 다운로드:** 선택된 채널의 히스토리 가져오기 (`GetConversationHistory` + Pagination)
+- [ ] **스레드 다운로드:** 각 메시지의 댓글(Thread) 가져오기 (`GetConversationReplies`)
+- [x] **사용자 매핑:** User ID를 실제 이름으로 변환 (`GetUsersPaginated` + JSON 캐싱)
+- [x] **Markdown 변환:** 기본 Markdown 포맷 적용 (사용자 멘션 치환 포함)
+- [x] **파일 저장:** `export/{채널명}.md` 구조로 저장
 
-## Phase 4: 고도화 및 최적화 (Refinement)
-- [ ] 파일 저장 시스템 구현 (폴더 구조화)
-- [ ] 첨부파일/이미지 다운로드 처리 (선택 사항)
-- [ ] 진행률 표시 (Progress Bar) 및 에러 핸들링 강화
-- [ ] Cross-compile 빌드 설정 (Mac/Windows)
+## Phase 4: 사용성 개선 (Usability Enhancement)
+- [ ] **채널 그룹핑(Preset):** 자주 사용하는 채널 그룹을 설정 파일(`config.yaml`)로 저장/로드
+- [ ] **검색 및 필터링:** TUI 내에서 채널 이름으로 검색 및 필터링 기능
+- [ ] **설정 관리:** 토큰, 쿠키, 저장 경로 등을 설정 파일로 관리
 
-## Phase 5: 배포 및 문서화 (Release)
+## Phase 5: 고급 분석 및 최적화 (Advanced & Optimization)
+- [ ] **채널 요약:** 채널별 주요 논의 내용 키워드 추출 또는 요약 (LLM 연동 고려)
+- [ ] **첨부파일 처리:** 이미지 및 파일 다운로드 옵션
+- [ ] **진행률 표시:** 다운로드 진행 상황 Progress Bar 표시
+- [ ] **에러 핸들링:** Rate Limit 자동 재시도 및 부분 실패 처리
+
+## Phase 6: 배포 및 문서화 (Release)
 - [ ] `README.md` 작성 (사용법, 설치법)
 - [ ] GitHub Release를 통한 바이너리 배포
