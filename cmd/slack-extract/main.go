@@ -16,11 +16,13 @@ import (
 // --- Bubble Tea Model & Messages ---
 
 type model struct {
-	channels []slack.Channel
-	cursor   int
-	selected map[string]struct{} // Set of selected channel IDs
-	err      error
-	quitting bool
+	channels  []slack.Channel
+	cursor    int
+	selected  map[string]struct{} // Set of selected channel IDs
+	err       error
+	quitting  bool
+	windowMin int
+	height    int
 }
 
 func initialModel(client *slack.Client) (model, error) {
@@ -62,6 +64,13 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height = msg.Height - 5 // Reserve lines for header/footer
+		if m.height < 1 {
+			m.height = 1
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -70,10 +79,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				if m.cursor < m.windowMin {
+					m.windowMin = m.cursor
+				}
 			}
 		case "down", "j":
 			if m.cursor < len(m.channels)-1 {
 				m.cursor++
+				if m.cursor >= m.windowMin+m.height {
+					m.windowMin = m.cursor - m.height + 1
+				}
 			}
 		case " ":
 			if len(m.channels) > 0 {
@@ -103,7 +118,19 @@ func (m model) View() string {
 
 	s := "Select channels to export (Press Space to select, Enter to confirm):\n\n"
 
-	for i, ch := range m.channels {
+	height := m.height
+	if height == 0 {
+		height = 20 // Default height
+	}
+
+	start := m.windowMin
+	end := start + height
+	if end > len(m.channels) {
+		end = len(m.channels)
+	}
+
+	for i := start; i < end; i++ {
+		ch := m.channels[i]
 		cursor := " " // no cursor
 		if m.cursor == i {
 			cursor = ">" // cursor!
@@ -180,7 +207,7 @@ func main() {
 	}
 
 	// Run Bubble Tea Program
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

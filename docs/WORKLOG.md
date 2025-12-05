@@ -84,6 +84,39 @@ slackExtract/
 
 ---
 
+## 2025-12-05 (Day 1 - 추가 작업)
+
+### 📋 주요 작업 내용
+
+#### 1. 채널 목록 조회 개선 (Pagination)
+- **문제:** `GetConversations` API 호출 시 `Limit: 1000` 설정으로 인해 1000개 이상의 채널이 있는 워크스페이스에서 일부 채널이 누락됨.
+- **해결:** `next_cursor`를 확인하여 모든 페이지의 채널을 가져오도록 반복문(Loop) 처리 구현.
+
+#### 2. TUI 뷰 개선 (Scrolling & AltScreen)
+- **문제:** 채널 목록이 터미널 높이를 초과할 경우, 스크롤 기능이 없어 아래쪽 채널을 볼 수 없거나 화면이 잘리는 현상 발생.
+- **해결:**
+  - `tea.WithAltScreen()` 옵션을 추가하여 터미널 전체 화면 모드 적용.
+  - `windowMin`, `height` 변수를 도입하여 스크롤 가능한 뷰포트(Viewport) 로직 구현.
+  - `tea.WindowSizeMsg`를 처리하여 터미널 크기 변경에 동적으로 대응.
+
+#### 3. 개발 환경 이슈 해결 (Go Version Mismatch)
+- **문제:** Dev Container 환경에서 `go run` 실행 시 `compile: version mismatch` 오류 발생 (Go 1.25.4 vs 1.25.5).
+- **원인:** 이전 빌드 캐시와 현재 설치된 Go 툴체인 버전 간의 불일치.
+- **해결:**
+  - `go clean -cache`로 빌드 캐시 삭제.
+  - `go run -a ...` 옵션으로 강제 재빌드.
+  - `export GOTOOLCHAIN=local` 설정으로 로컬 툴체인 사용 강제.
+
+### ⚠️ 이슈 및 해결
+
+| 이슈 | 원인 | 해결 |
+|------|------|------|
+| 채널 목록 누락 | API Pagination 미구현 | `cursor` 기반 반복 호출 로직 추가 |
+| 터미널 화면 잘림 | TUI 스크롤 미구현 | Viewport 로직 및 `AltScreen` 적용 |
+| `compile: version mismatch` | Go 버전 업데이트 후 캐시 잔존 | `go clean -cache` 및 `go run -a` 실행 |
+
+---
+
 ## 템플릿 (복사용)
 
 ```markdown
