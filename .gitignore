@@ -42,3 +42,4 @@ export/
 *.md
 !README.md
 !docs/*.md
+slack-extract
