@@ -19,6 +19,13 @@ go.work
 
 # Environment variables
 .env
+
+# Exported data
+export/
+
+# Local Cache
+users.json
+channels.json
 .env.local
 
 # IDE specific files

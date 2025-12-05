@@ -19,6 +19,23 @@ import (
 
 // --- Bubble Tea Model & Messages ---
 
+// CachedChannel stores channel info for local caching
+type CachedChannel struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	IsArchived bool   `json:"is_archived"`
+	IsPrivate  bool   `json:"is_private"`
+	IsChannel  bool   `json:"is_channel"`
+	IsGroup    bool   `json:"is_group"`
+	IsIM       bool   `json:"is_im"`
+	IsMpIM     bool   `json:"is_mpim"`
+	IsMember   bool   `json:"is_member"`
+	NumMembers int    `json:"num_members"`
+	Topic      string `json:"topic"`
+	Purpose    string `json:"purpose"`
+	Created    int64  `json:"created"`
+}
+
 type model struct {
 	channels  []slack.Channel
 	cursor    int
@@ -30,25 +47,10 @@ type model struct {
 }
 
 func initialModel(client *slack.Client) (model, error) {
-	// Fetch channels (public and private)
-	// types: public_channel, private_channel, mpim, im
-	params := &slack.GetConversationsParameters{
-		Types: []string{"public_channel", "private_channel", "mpim", "im"},
-		Limit: 1000, // Fetch up to 1000 channels per page
-	}
-
-	var allChannels []slack.Channel
-	for {
-		channels, nextCursor, err := client.GetConversations(params)
-		if err != nil {
-			return model{}, err
-		}
-		allChannels = append(allChannels, channels...)
-
-		if nextCursor == "" {
-			break
-		}
-		params.Cursor = nextCursor
+	// Load channels from cache or API
+	allChannels, err := fetchChannels(client)
+	if err != nil {
+		return model{}, err
 	}
 
 	// Sort channels by name
@@ -60,6 +62,91 @@ func initialModel(client *slack.Client) (model, error) {
 		channels: allChannels,
 		selected: make(map[string]struct{}),
 	}, nil
+}
+
+func fetchChannels(client *slack.Client) ([]slack.Channel, error) {
+	cacheFile := "channels.json"
+
+	// 1. Try to load from cache
+	if _, err := os.Stat(cacheFile); err == nil {
+		data, err := os.ReadFile(cacheFile)
+		if err == nil {
+			var cachedChannels []CachedChannel
+			if err := json.Unmarshal(data, &cachedChannels); err == nil {
+				fmt.Printf("Loaded %d channels from cache (channels.json).\n", len(cachedChannels))
+				// Convert CachedChannel to slack.Channel
+				channels := make([]slack.Channel, len(cachedChannels))
+				for i, cc := range cachedChannels {
+					ch := slack.Channel{}
+					ch.ID = cc.ID
+					ch.Name = cc.Name
+					ch.IsArchived = cc.IsArchived
+					ch.IsPrivate = cc.IsPrivate
+					ch.IsChannel = cc.IsChannel
+					ch.IsGroup = cc.IsGroup
+					ch.IsIM = cc.IsIM
+					ch.IsMpIM = cc.IsMpIM
+					ch.IsMember = cc.IsMember
+					ch.NumMembers = cc.NumMembers
+					ch.Topic = slack.Topic{Value: cc.Topic}
+					ch.Purpose = slack.Purpose{Value: cc.Purpose}
+					ch.Created = slack.JSONTime(cc.Created)
+					channels[i] = ch
+				}
+				return channels, nil
+			}
+		}
+	}
+
+	// 2. Fetch from API (with pagination)
+	fmt.Println("Fetching channel list from Slack API...")
+	params := &slack.GetConversationsParameters{
+		Types: []string{"public_channel", "private_channel", "mpim", "im"},
+		Limit: 1000,
+	}
+
+	var allChannels []slack.Channel
+	for {
+		channels, nextCursor, err := client.GetConversations(params)
+		if err != nil {
+			return nil, err
+		}
+		allChannels = append(allChannels, channels...)
+
+		if nextCursor == "" {
+			break
+		}
+		params.Cursor = nextCursor
+		fmt.Printf("  ...fetched %d channels so far\n", len(allChannels))
+	}
+	fmt.Printf("  -> Fetched %d channels total.\n", len(allChannels))
+
+	// 3. Save to cache
+	cachedChannels := make([]CachedChannel, len(allChannels))
+	for i, ch := range allChannels {
+		cachedChannels[i] = CachedChannel{
+			ID:         ch.ID,
+			Name:       ch.Name,
+			IsArchived: ch.IsArchived,
+			IsPrivate:  ch.IsPrivate,
+			IsChannel:  ch.IsChannel,
+			IsGroup:    ch.IsGroup,
+			IsIM:       ch.IsIM,
+			IsMpIM:     ch.IsMpIM,
+			IsMember:   ch.IsMember,
+			NumMembers: ch.NumMembers,
+			Topic:      ch.Topic.Value,
+			Purpose:    ch.Purpose.Value,
+			Created:    int64(ch.Created),
+		}
+	}
+	data, err := json.MarshalIndent(cachedChannels, "", "  ")
+	if err == nil {
+		_ = os.WriteFile(cacheFile, data, 0644)
+		fmt.Println("Saved channel list to cache (channels.json).")
+	}
+
+	return allChannels, nil
 }
 
 func (m model) Init() tea.Cmd {
@@ -280,25 +367,15 @@ func fetchUsers(client *slack.Client) (map[string]string, error) {
 		}
 	}
 
-	// 2. Fetch from API (with pagination)
+	// 2. Fetch from API
 	fmt.Println("Fetching user list from Slack API...")
-	var allUsers []slack.User
-	limit := 1000
-	cursor := ""
-
-	for {
-		users, nextCursor, err := client.GetUsersPaginated(slack.GetUsersOptionLimit(limit), slack.GetUsersOptionCursor(cursor))
-		if err != nil {
-			return nil, err
-		}
-		allUsers = append(allUsers, users...)
-
-		if nextCursor == "" {
-			break
-		}
-		cursor = nextCursor
-		fmt.Printf("  ...fetched %d users so far\n", len(allUsers))
+	
+	// slack-go GetUsers fetches all users (handles pagination internally)
+	allUsers, err := client.GetUsers()
+	if err != nil {
+		return nil, err
 	}
+	fmt.Printf("  -> Fetched %d users total.\n", len(allUsers))
 
 	for _, u := range allUsers {
 		userMap[u.ID] = u.RealName
