@@ -30,6 +30,8 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [x] **파일 저장:**
     - 구조: `./export/{ChannelName}.md`
     - (옵션) 이미지/첨부파일 다운로드 및 로컬 링크 처리
+        - 기본값: URL만 저장 (LLM 활용 효율성 증대)
+        - 설정: `DOWNLOAD_ATTACHMENTS=true` 시 파일 다운로드
 
 ### 2.5 사용자 관리 (User Management)
 - [x] **로컬 캐싱:** 사용자 목록을 `users.json` 파일에 캐싱하여 API 호출을 최소화한다.

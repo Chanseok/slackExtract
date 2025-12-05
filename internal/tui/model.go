@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/chanseok/slackExtract/internal/config"
 	"github.com/slack-go/slack"
 )
 
@@ -45,6 +46,7 @@ type Model struct {
 	SlackClient      *slack.Client
 	HTTPClient       *http.Client
 	UserMap          map[string]string
+	Config           *config.Config
 	IsDownloading    bool
 	ProgressChannel  chan ProgressMsg // Channel to receive updates from worker
 	CurrentChannel   string
@@ -56,7 +58,7 @@ type Model struct {
 	TotalSelected    int
 }
 
-func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string) Model {
+func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string, cfg *config.Config) Model {
 	m := Model{
 		Channels:     channels,
 		Selected:     make(map[string]struct{}),
@@ -67,6 +69,7 @@ func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.C
 		SlackClient:  client,
 		HTTPClient:   httpClient,
 		UserMap:      userMap,
+		Config:       cfg,
 	}
 	m.updateFilter()
 	return m

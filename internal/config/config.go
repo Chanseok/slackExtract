@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	UserToken string
-	DSCookie  string
+	UserToken           string
+	DSCookie            string
+	DownloadAttachments bool
 }
 
 func Load() (*Config, error) {
@@ -23,13 +24,15 @@ func Load() (*Config, error) {
 
 	token := os.Getenv("SLACK_USER_TOKEN")
 	dCookie := os.Getenv("SLACK_DS_COOKIE")
+	downloadAttachments := os.Getenv("DOWNLOAD_ATTACHMENTS") == "true"
 
 	if token == "" || dCookie == "" {
 		return nil, fmt.Errorf("SLACK_USER_TOKEN (xoxc-...) and SLACK_DS_COOKIE (xoxd-...) are required")
 	}
 
 	return &Config{
-		UserToken: token,
-		DSCookie:  dCookie,
+		UserToken:           token,
+		DSCookie:            dCookie,
+		DownloadAttachments: downloadAttachments,
 	}, nil
 }

@@ -74,7 +74,7 @@ func startDownload(m Model) tea.Cmd {
 					Done:        false,
 				}
 
-				err = export.SaveToMarkdown(m.HTTPClient, channelName, msgs, m.UserMap)
+				err = export.SaveToMarkdown(m.HTTPClient, channelName, msgs, m.UserMap, m.Config.DownloadAttachments)
 				if err != nil {
 					m.ProgressChannel <- ProgressMsg{
 						ChannelName: channelName,

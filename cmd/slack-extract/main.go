@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// 5. Run TUI
-	initialModel := tui.NewModel(channels, client, httpClient, userMap)
+	initialModel := tui.NewModel(channels, client, httpClient, userMap, cfg)
 	p := tea.NewProgram(initialModel, tea.WithAltScreen())
 	_, err = p.Run()
 	if err != nil {

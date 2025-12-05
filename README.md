@@ -29,3 +29,14 @@ cd slackExtract
 go mod tidy
 go run cmd/slack-extract/main.go
 ```
+
+## 설정 (Configuration)
+프로젝트 루트에 `.env` 파일을 생성하여 다음 환경 변수를 설정하세요.
+
+```bash
+SLACK_USER_TOKEN=xoxc-...
+SLACK_DS_COOKIE=xoxd-...
+# 첨부파일 다운로드 여부 (기본값: false - URL만 저장)
+# true로 설정하면 이미지/파일을 export/attachments 폴더에 다운로드합니다.
+DOWNLOAD_ATTACHMENTS=false 
+```
