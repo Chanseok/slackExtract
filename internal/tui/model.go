@@ -2,10 +2,24 @@ package tui
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/slack-go/slack"
 )
+
+// ProgressMsg is sent by the worker to update the UI
+type ProgressMsg struct {
+	ChannelName string
+	Current     int    // Number of items processed (messages fetched, files downloaded)
+	Total       int    // Total items to process (if known)
+	Status      string // Description of current action
+	Done        bool   // True if this channel is finished
+	AllDone     bool   // True if all selected channels are finished
+	Err         error
+}
 
 type Model struct {
 	Channels     []slack.Channel
@@ -26,9 +40,23 @@ type Model struct {
 	ShowPrivate    bool
 	ShowArchived   bool
 	ShowDMs        bool
+
+	// Progress / Download State
+	SlackClient      *slack.Client
+	HTTPClient       *http.Client
+	UserMap          map[string]string
+	IsDownloading    bool
+	ProgressChannel  chan ProgressMsg // Channel to receive updates from worker
+	CurrentChannel   string
+	ProgressCurrent  int
+	ProgressTotal    int
+	ProgressStatus   string
+	StartTime        time.Time
+	FinishedChannels int
+	TotalSelected    int
 }
 
-func NewModel(channels []slack.Channel) Model {
+func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string) Model {
 	m := Model{
 		Channels:     channels,
 		Selected:     make(map[string]struct{}),
@@ -36,6 +64,9 @@ func NewModel(channels []slack.Channel) Model {
 		ShowPrivate:  true,
 		ShowArchived: true,
 		ShowDMs:      true,
+		SlackClient:  client,
+		HTTPClient:   httpClient,
+		UserMap:      userMap,
 	}
 	m.updateFilter()
 	return m
@@ -147,10 +178,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "enter":
-			// Start export process
+			if len(m.Selected) > 0 && !m.IsDownloading {
+				m.IsDownloading = true
+				m.StartTime = time.Now()
+				m.TotalSelected = len(m.Selected)
+				m.ProgressChannel = make(chan ProgressMsg)
+				return m, tea.Batch(
+					startDownload(m),
+					waitForUpdate(m.ProgressChannel),
+				)
+			}
+		}
+
+	case ProgressMsg:
+		if msg.AllDone {
 			m.Quitting = true
 			return m, tea.Quit
 		}
+		m.CurrentChannel = msg.ChannelName
+		m.ProgressCurrent = msg.Current
+		m.ProgressTotal = msg.Total
+		m.ProgressStatus = msg.Status
+		if msg.Done {
+			m.FinishedChannels++
+		}
+		return m, waitForUpdate(m.ProgressChannel)
 	}
 	return m, nil
 }
@@ -268,6 +320,9 @@ func indexOfSubstr(s, substr string) int {
 func (m Model) View() string {
 	if m.Err != nil {
 		return fmt.Sprintf("Error: %v\n", m.Err)
+	}
+	if m.IsDownloading {
+		return m.renderProgress()
 	}
 	if m.Quitting {
 		return "Starting export...\n"
@@ -399,4 +454,40 @@ func (m Model) renderFilterMenu() string {
 	menu += "\n" + HelpStyle.Render("↑↓: Navigate | Space: Toggle | Esc/Enter/f: Close")
 
 	return FilterMenuStyle.Render(menu)
+}
+
+func (m Model) renderProgress() string {
+	// Calculate ETA
+	elapsed := time.Since(m.StartTime)
+	var eta string
+	if m.FinishedChannels > 0 {
+		avgTimePerChannel := elapsed / time.Duration(m.FinishedChannels)
+		remaining := time.Duration(m.TotalSelected-m.FinishedChannels) * avgTimePerChannel
+		eta = fmt.Sprintf("ETA: %s", remaining.Round(time.Second))
+	} else {
+		eta = "ETA: Calculating..."
+	}
+
+	// Progress Bar for Channels
+	percent := 0.0
+	if m.TotalSelected > 0 {
+		percent = float64(m.FinishedChannels) / float64(m.TotalSelected)
+	}
+	width := 50
+	filled := int(percent * float64(width))
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
+
+	s := fmt.Sprintf("\n  🚀 Exporting Channels... (%d/%d)\n\n", m.FinishedChannels, m.TotalSelected)
+	s += fmt.Sprintf("  [%s] %.0f%%\n", bar, percent*100)
+	s += fmt.Sprintf("  %s\n\n", eta)
+
+	s += fmt.Sprintf("  Current: %s\n", m.CurrentChannel)
+	s += fmt.Sprintf("  Status:  %s\n", m.ProgressStatus)
+	if m.ProgressTotal > 0 {
+		s += fmt.Sprintf("  Items:   %d / %d\n", m.ProgressCurrent, m.ProgressTotal)
+	} else {
+		s += fmt.Sprintf("  Items:   %d\n", m.ProgressCurrent)
+	}
+
+	return s
 }

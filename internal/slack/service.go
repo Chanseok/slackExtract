@@ -203,3 +203,55 @@ func FetchHistory(client *slack.Client, channelID string) ([]Message, error) {
 	}
 	return allMessages, nil
 }
+
+// ProgressCallback is a function type for reporting progress
+type ProgressCallback func(current int, total int, status string)
+
+func FetchHistoryWithProgress(client *slack.Client, channelID string, callback ProgressCallback) ([]Message, error) {
+	var allMessages []Message
+	params := &slack.GetConversationHistoryParameters{
+		ChannelID: channelID,
+		Limit:     1000,
+	}
+
+	if callback != nil {
+		callback(0, 0, "Fetching history...")
+	}
+
+	for {
+		history, err := client.GetConversationHistory(params)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, msg := range history.Messages {
+			richMsg := Message{Message: msg}
+
+			// Fetch thread replies if any
+			if msg.ReplyCount > 0 {
+				if callback != nil {
+					callback(len(allMessages)+i, 0, fmt.Sprintf("Fetching thread (%d replies)...", msg.ReplyCount))
+				}
+				replies, _, _, err := client.GetConversationReplies(&slack.GetConversationRepliesParameters{
+					ChannelID: channelID,
+					Timestamp: msg.Timestamp,
+					Limit:     1000,
+				})
+				if err == nil && len(replies) > 1 {
+					richMsg.Replies = replies[1:]
+				}
+			}
+			allMessages = append(allMessages, richMsg)
+		}
+
+		if callback != nil {
+			callback(len(allMessages), 0, "Fetching history...")
+		}
+
+		if !history.HasMore {
+			break
+		}
+		params.Cursor = history.ResponseMetaData.NextCursor
+	}
+	return allMessages, nil
+}
