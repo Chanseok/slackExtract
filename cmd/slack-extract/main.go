@@ -24,7 +24,7 @@ func main() {
 	fmt.Println("Slack Extract - Initializing...")
 
 	// 2. Initialize Slack Client
-	client, err := slack.NewClient(cfg)
+	client, httpClient, err := slack.NewClient(cfg)
 	if err != nil {
 		fmt.Printf("Error initializing Slack client: %v\n", err)
 		os.Exit(1)
@@ -81,7 +81,7 @@ func main() {
 		fmt.Printf("  -> Successfully fetched %d messages.\n", len(msgs))
 
 		// Save to file
-		err = export.SaveToMarkdown(channelName, msgs, userMap)
+		err = export.SaveToMarkdown(httpClient, channelName, msgs, userMap)
 		if err != nil {
 			fmt.Printf("  Error saving file: %v\n", err)
 		} else {
