@@ -23,7 +23,7 @@ func SaveToMarkdown(httpClient *http.Client, channelName string, msgs []slack.Me
 	}
 
 	// Sanitize channel name for filename
-	safeName := strings.ReplaceAll(channelName, "/", "_")
+	safeName := sanitizeFilename(channelName)
 	filePath := filepath.Join(targetFolder, safeName+".md")
 
 	// Check if file exists when in append mode
@@ -126,7 +126,7 @@ func writeMessage(file *os.File, msg slack.Message, userMap map[string]string, h
 				// Download file
 				localPath, err := downloadFile(httpClient, f, channelName, targetFolder)
 				if err != nil {
-					fmt.Fprintf(file, "%s📎 [%s](%s) *(download failed: %v)*\n", indent, f.Name, f.URLPrivate, err)
+					fmt.Fprintf(file, "%s📎 [%s](%s) *(download failed)*\n", indent, f.Name, f.URLPrivate)
 				} else {
 					// Check if it's an image
 					if isImage(f.Mimetype) {
@@ -215,7 +215,7 @@ func downloadFile(httpClient *http.Client, file slackgo.File, channelName string
 	}
 
 	// Create unique filename
-	filename := fmt.Sprintf("%s_%s", file.ID, file.Name)
+	filename := fmt.Sprintf("%s_%s", file.ID, sanitizeFilename(file.Name))
 	filePath := filepath.Join(attachDir, filename)
 
 	// Check if file already exists
@@ -266,4 +266,26 @@ func downloadFile(httpClient *http.Client, file slackgo.File, channelName string
 
 func isImage(mimetype string) bool {
 	return strings.HasPrefix(mimetype, "image/")
+}
+
+func sanitizeFilename(name string) string {
+	// Replace filesystem-unsafe characters
+	replacements := map[string]string{
+		"/":  "_",
+		"\\": "_",
+		":":  "_",
+		"*":  "_",
+		"?":  "_",
+		"\"": "_",
+		"<":  "_",
+		">":  "_",
+		"|":  "_",
+	}
+	
+	result := name
+	for old, new := range replacements {
+		result = strings.ReplaceAll(result, old, new)
+	}
+	
+	return result
 }
