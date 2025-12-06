@@ -151,6 +151,26 @@ func (m *Model) scanForExistingFiles() {
 		}
 	}
 	m.SubFolders = append(m.SubFolders, "+ New Folder")
+
+	// If GroupName is set (via 'g' key), add it and select it
+	if m.GroupName != "" {
+		foundIdx := -1
+		for i, f := range m.SubFolders {
+			if f == m.GroupName {
+				foundIdx = i
+				break
+			}
+		}
+
+		if foundIdx != -1 {
+			m.FolderCursor = foundIdx
+		} else {
+			// Insert before "+ New Folder"
+			lastIdx := len(m.SubFolders) - 1
+			m.SubFolders = append(m.SubFolders[:lastIdx], append([]string{m.GroupName}, m.SubFolders[lastIdx:]...)...)
+			m.FolderCursor = lastIdx
+		}
+	}
 }
 
 func (m Model) updateConfirm(msg tea.Msg) (Model, tea.Cmd) {

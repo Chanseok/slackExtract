@@ -49,7 +49,7 @@ func (m *Manager) loadIndex() error {
 	return nil
 }
 
-// SaveIndex saves the current index to disk
+// SaveIndex saves the index to disk
 func (m *Manager) SaveIndex() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/chanseok/slackExtract/internal/config"
 	"github.com/chanseok/slackExtract/internal/manager"
 	"github.com/chanseok/slackExtract/internal/meta"
@@ -35,6 +36,10 @@ type Model struct {
 	SearchMode   bool
 	SearchQuery  string
 	FilteredIdx  []int // Indices of filtered channels
+
+	// Grouping Mode
+	GroupingMode bool
+	GroupName    string
 
 	// Filter Menu
 	FilterMenuMode bool
@@ -143,6 +148,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.GroupingMode {
+			switch msg.String() {
+			case "esc":
+				m.GroupingMode = false
+				m.GroupName = ""
+			case "enter":
+				m.GroupingMode = false
+				// Proceed to confirm mode with the group name
+				m.ConfirmMode = true
+				m.scanForExistingFiles()
+			case "backspace":
+				if len(m.GroupName) > 0 {
+					m.GroupName = m.GroupName[:len(m.GroupName)-1]
+				}
+			default:
+				if len(msg.String()) == 1 {
+					m.GroupName += msg.String()
+				}
+			}
+			return m, nil
+		}
+
 		if m.SearchMode {
 			switch msg.String() {
 			case "esc":
@@ -175,6 +202,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f":
 			m.FilterMenuMode = true
 			return m, nil
+		case "g":
+			if len(m.Selected) > 0 {
+				m.GroupingMode = true
+				m.GroupName = ""
+				return m, nil
+			}
 		case "a":
 			// Toggle all visible channels
 			m.toggleAllVisible()
@@ -363,14 +396,29 @@ func (m Model) View() string {
 	totalChannels := len(m.Channels)
 	visibleChannels := len(m.FilteredIdx)
 	selectedCount := len(m.Selected)
-	statusText := fmt.Sprintf(" Channels: %d total | %d visible | %d selected ", totalChannels, visibleChannels, selectedCount)
-	s += StatusBarStyle.Render(statusText) + "\n\n"
+
+	// Helper for status bar items
+	item := func(key, val string) string {
+		return StatusBarKeyStyle.Render(key) + StatusBarValueStyle.Render(val)
+	}
+
+	bar := lipgloss.JoinHorizontal(lipgloss.Top,
+		item(" Total: ", fmt.Sprintf("%d ", totalChannels)),
+		item(" Visible: ", fmt.Sprintf("%d ", visibleChannels)),
+		item(" Selected: ", fmt.Sprintf("%d ", selectedCount)),
+	)
+	s += StatusBarStyle.Render(bar) + "\n\n"
 
 	// Search bar
 	if m.SearchMode {
 		s += fmt.Sprintf("🔍 Search: %s█\n\n", m.SearchQuery)
 	} else if m.SearchQuery != "" {
 		s += fmt.Sprintf("🔍 Filter: '%s' (Press / to edit, Esc to clear)\n\n", m.SearchQuery)
+	}
+
+	// Grouping Input (overlay)
+	if m.GroupingMode {
+		return fmt.Sprintf("\n\n  📂 Enter Group Name (Folder): %s█\n\n  (Press Enter to confirm, Esc to cancel)", m.GroupName)
 	}
 
 	// Filter Menu (overlay)
@@ -418,13 +466,26 @@ func (m Model) View() string {
 			memberInfo = fmt.Sprintf(" (%d members)", ch.NumMembers)
 		}
 
+		// Metadata Status
+		metaStatus := ""
+		if m.MetaManager != nil {
+			if chMeta, ok := m.MetaManager.GetChannel(ch.ID); ok {
+				if !chMeta.LastDownloadedAt.IsZero() {
+					metaStatus += " ⬇️ "
+				}
+				if chMeta.Analysis != nil && !chMeta.Analysis.LastAnalyzedAt.IsZero() {
+					metaStatus += " 📝"
+				}
+			}
+		}
+
 		// Apply style
 		var line string
 		if m.Cursor == i {
-			line = SelectedStyle.Render(fmt.Sprintf("%s%s %s %s%s", cursor, checked, icon, name, memberInfo))
+			line = SelectedStyle.Render(fmt.Sprintf("%s%s %s %s%s%s", cursor, checked, icon, name, memberInfo, metaStatus))
 		} else {
 			style := GetChannelStyle(ch.IsPrivate, ch.IsIM, ch.IsMpIM, ch.IsArchived, false)
-			line = fmt.Sprintf("%s%s %s ", cursor, checked, icon) + style.Render(name) + NormalStyle.Render(memberInfo)
+			line = fmt.Sprintf("%s%s %s ", cursor, checked, icon) + style.Render(name) + NormalStyle.Render(memberInfo+metaStatus)
 		}
 
 		s += line + "\n"
@@ -435,7 +496,8 @@ func (m Model) View() string {
 	}
 
 	// Help
-	s += "\n" + HelpStyle.Render("↑↓/jk: Navigate | Space: Select | a: Toggle All | /: Search | f: Filter | Enter: Download | q: Quit")
+	helpText := "↑↓/jk: Move • Space: Select • a: All • /: Search • f: Filter • g: Group • Enter: Download • q: Quit"
+	s += "\n" + HelpStyle.Render(helpText)
 
 	return s
 }

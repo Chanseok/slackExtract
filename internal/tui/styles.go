@@ -43,8 +43,18 @@ var (
 			BorderForeground(ColorCyan)
 
 	StatusBarStyle = lipgloss.NewStyle().
-			Foreground(ColorGray).
-			Background(lipgloss.Color("235"))
+			Foreground(ColorWhite).
+			Background(lipgloss.Color("235")).
+			Padding(0, 1)
+
+	StatusBarKeyStyle = lipgloss.NewStyle().
+				Foreground(ColorCyan).
+				Background(lipgloss.Color("235")).
+				Bold(true)
+
+	StatusBarValueStyle = lipgloss.NewStyle().
+				Foreground(ColorWhite).
+				Background(lipgloss.Color("235"))
 
 	HelpStyle = lipgloss.NewStyle().
 			Foreground(ColorGray).
