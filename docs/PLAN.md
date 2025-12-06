@@ -207,4 +207,4 @@ export/
 
 ## Phase 6: 배포 및 문서화 (Release)
 - [x] `README.md` 작성 (사용법, 설치법, LLM 설정 포함)
-- [ ] GitHub Release를 통한 바이너리 배포
+- [x] GitHub Release를 통한 바이너리 배포 (GitHub Actions 설정 완료)
