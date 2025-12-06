@@ -185,6 +185,10 @@ func (a *ChannelAnalyzer) generateKoreanSummary(channelName, content string, top
 		topicList.WriteString(fmt.Sprintf("%d. %s (중요도: %d/10)\n", i+1, t.Name, t.Importance))
 	}
 
+	// Determine channel type and get specific prompt
+	channelType := determineChannelType(channelName)
+	specificPrompt := getPromptForChannelType(channelType)
+
 	prompt := fmt.Sprintf(`다음은 Slack 채널 #%s의 대화 내용입니다.
 
 주요 논의 주제:
@@ -192,15 +196,10 @@ func (a *ChannelAnalyzer) generateKoreanSummary(channelName, content string, top
 
 대화 내용을 분석하여 한국어로 종합 요약을 작성해주세요.
 
-요약에는 다음 내용을 포함해주세요:
-1. 채널의 전반적인 목적과 분위기
-2. 각 주요 주제에 대한 핵심 논의 내용 (2-3문장씩)
-3. 주요 결정사항 또는 합의점
-4. 미해결 이슈 또는 후속 조치가 필요한 사항
-5. 특별히 주목할 만한 의견이나 아이디어
+%s
 
 대화 내용:
-%s`, channelName, topicList.String(), truncatedContent)
+%s`, channelName, topicList.String(), specificPrompt, truncatedContent)
 
 	messages := []ChatMessage{
 		{Role: "system", Content: "당신은 팀 커뮤니케이션을 분석하고 핵심 내용을 명확하게 요약하는 전문가입니다. 항상 한국어로 응답합니다."},
@@ -362,3 +361,58 @@ func extractJSON(s string) string {
 func parseJSON(s string, v interface{}) error {
 	return json.Unmarshal([]byte(s), v)
 }
+
+// determineChannelType guesses the channel type based on its name
+func determineChannelType(channelName string) string {
+	name := strings.ToLower(channelName)
+	if strings.Contains(name, "project") {
+		return "project"
+	}
+	if strings.Contains(name, "sales") {
+		return "sales"
+	}
+	if strings.Contains(name, "marketing") {
+		return "marketing"
+	}
+	return "general"
+}
+
+// getPromptForChannelType returns a specific prompt for the channel type
+func getPromptForChannelType(channelType string) string {
+	basePrompt := `요약에는 다음 내용을 포함해주세요:
+1. 채널의 전반적인 목적과 분위기
+2. 각 주요 주제에 대한 핵심 논의 내용 (2-3문장씩)
+3. 주요 결정사항 또는 합의점
+4. 미해결 이슈 또는 후속 조치가 필요한 사항
+5. 특별히 주목할 만한 의견이나 아이디어`
+
+	switch channelType {
+	case "project":
+		return `이 채널은 '프로젝트' 관련 채널입니다. 다음 관점에서 심층 분석해주세요:
+1. 프로젝트 현황 및 진행 상황 (Key Status)
+2. 주요 제안 및 기획 내용 (Key Proposals)
+3. 기술적/기획적 논의 및 쟁점 (Key Debates)
+4. 주요 의사결정 사항 (Decisions Made)
+5. 향후 계획 및 액션 아이템 (Next Steps)
+6. 리스크 또는 블로커 (Risks & Blockers)`
+	case "sales":
+		return `이 채널은 '영업(Sales)' 관련 채널입니다. 다음 관점에서 심층 분석해주세요:
+1. 주요 거래 및 기회 (Key Deals & Opportunities)
+2. 매출 및 성과 현황 (Revenue & Performance)
+3. 고객 피드백 및 요구사항 (Client Feedback)
+4. 경쟁사 동향 또는 시장 이슈 (Competition & Market)
+5. 영업 활동의 주요 블로커 (Blockers)
+6. 전략적 제안 또는 개선점`
+	case "marketing":
+		return `이 채널은 '마케팅(Marketing)' 관련 채널입니다. 다음 관점에서 심층 분석해주세요:
+1. 진행 중인 캠페인 및 프로모션 (Active Campaigns)
+2. 주요 성과 지표 및 분석 (KPIs & Metrics)
+3. 채널별 성과 및 피드백 (Channel Performance)
+4. 크리에이티브/콘텐츠 관련 논의 (Creative Feedback)
+5. 예산 및 리소스 이슈 (Budget & Resources)
+6. 향후 마케팅 전략 및 아이디어`
+	default:
+		return basePrompt
+	}
+}
+
