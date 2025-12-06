@@ -24,7 +24,7 @@ go.work
 .env.local
 
 # Exported data
-export/
+/export/
 
 # Local Cache
 users.json
@@ -38,3 +38,6 @@ channels.json
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Temporary directories
+temp_slackdump/
