@@ -94,6 +94,23 @@ func (m *Manager) UpdateChannelDownload(channelID, channelName, relPath string, 
 	ch.LastDownloadedAt = time.Now()
 }
 
+// EnsureChannel ensures a channel exists in the index
+func (m *Manager) EnsureChannel(id, name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.index.Channels == nil {
+		m.index.Channels = make(map[string]*Channel)
+	}
+
+	if _, exists := m.index.Channels[id]; !exists {
+		m.index.Channels[id] = &Channel{
+			ID:   id,
+			Name: name,
+		}
+	}
+}
+
 // UpdateChannelAnalysis updates metadata after an analysis
 func (m *Manager) UpdateChannelAnalysis(channelID string, meta *AnalysisMeta) error {
 	m.mu.Lock()

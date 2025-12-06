@@ -174,24 +174,30 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer, mm *meta.Manage
 	if mm != nil {
 		// Find channel by name
 		ch, exists := mm.GetChannelByName(channelName)
+		var channelID string
+		
 		if exists {
-			analysisMeta := &meta.AnalysisMeta{
-				LastAnalyzedAt: time.Now(),
-				Model:          analyzer.GetClientModel(), // Need to expose this
-				Provider:       analyzer.GetClientProvider(), // Need to expose this
-				InputTokens:    result.Usage.PromptTokens,
-				OutputTokens:   result.Usage.CompletionTokens,
-				Cost:           result.EstimatedCost,
-				Language:       "ko", // Assuming Korean summary
-			}
-			if err := mm.UpdateChannelAnalysis(ch.ID, analysisMeta); err != nil {
-				fmt.Printf("Warning: Failed to update metadata for %s: %v\n", channelName, err)
-			}
+			channelID = ch.ID
 		} else {
-			// If channel not found in index (e.g. manually exported or index missing), we can't update by ID easily
-			// unless we assume channelName is ID or we add a way to add by name (which is risky without ID)
-			// For now, just warn
-			fmt.Printf("Warning: Channel %s not found in metadata index. Skipping metadata update.\n", channelName)
+			// If channel not found (e.g. manually exported or index missing), use channelName as ID
+			// This ensures we can still track analysis metadata
+			channelID = channelName
+			mm.EnsureChannel(channelID, channelName)
+			fmt.Printf("Info: Added %s to metadata index (ID: %s)\n", channelName, channelID)
+		}
+
+		analysisMeta := &meta.AnalysisMeta{
+			LastAnalyzedAt: time.Now(),
+			Model:          analyzer.GetClientModel(),
+			Provider:       analyzer.GetClientProvider(),
+			InputTokens:    result.Usage.PromptTokens,
+			OutputTokens:   result.Usage.CompletionTokens,
+			Cost:           result.EstimatedCost,
+			Language:       "ko", // Assuming Korean summary
+		}
+		
+		if err := mm.UpdateChannelAnalysis(channelID, analysisMeta); err != nil {
+			fmt.Printf("Warning: Failed to update metadata for %s: %v\n", channelName, err)
 		}
 	}
 
