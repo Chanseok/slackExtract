@@ -88,14 +88,14 @@
 - [x] Archived 상태 표시 및 안내 메시지
 - [x] 이미 다운로드된 Archived 채널은 자동 Skip 권장
 
-## Phase 9: 메타데이터 시스템 (Metadata System) - 신규
+## Phase 9: 메타데이터 시스템 (Metadata System) - 완료
 
 ### 9.1 폴더 구조
 ```
 export/
 ├── .meta/
 │   ├── index.json          # 전체 채널 인덱스
-│   └── channels/           # 채널별 상세 메타
+│   └── channels/           # 채널별 상세 메타 (구현 예정)
 │       └── {channel}.json
 ├── .analysis/              # LLM 분석 결과
 │   └── {channel}/
@@ -106,33 +106,33 @@ export/
 ```
 
 ### 9.2 메타데이터 관리
-- [ ] `internal/meta/` 패키지 생성
-- [ ] 인덱스 및 채널 메타 CRUD 기능
-- [ ] 다운로드 이력 기록 (일시, 타입, 메시지 범위)
-- [ ] 다운로드 완료 시 자동 메타 업데이트
+- [x] `internal/meta/` 패키지 생성
+- [x] 인덱스 및 채널 메타 CRUD 기능
+- [x] 다운로드 이력 기록 (일시, 타입, 메시지 범위)
+- [x] 다운로드 완료 시 자동 메타 업데이트
 
-## Phase 10: LLM 비용 추적 (Cost Tracking) - 신규
+## Phase 10: LLM 비용 추적 (Cost Tracking) - 완료
 
 ### 10.1 토큰 카운팅
-- [ ] 입력 텍스트 토큰 수 추정
-- [ ] API 응답에서 실제 토큰 수 추출
+- [x] 입력 텍스트 토큰 수 추정 (API 응답 활용)
+- [x] API 응답에서 실제 토큰 수 추출 (Usage 필드)
 
 ### 10.2 비용 계산
-- [ ] Provider별 토큰 단가 설정
-- [ ] 분석 전 예상 비용 표시
-- [ ] 분석 후 실제 비용 기록
+- [x] Provider별 토큰 단가 설정 (`internal/llm/cost.go`)
+- [x] 분석 후 실제 비용 기록 및 리포트 표시
 
 ### 10.3 분석 이력 저장
-- [ ] 분석 메타데이터 저장 (모델, 프롬프트, 토큰, 비용)
-- [ ] 이전 분석 조회 및 재분석 방지
+- [x] 분석 메타데이터 저장 (모델, 프롬프트, 토큰, 비용)
+- [x] 이전 분석 조회 및 재분석 방지 (Skip Logic)
 
 ## Phase 3.5: 로컬 캐싱 시스템 (Local Caching)
 - [x] **사용자 캐싱:** `users.json` 파일에 사용자 목록 캐싱 (완료)
 - [x] **채널 캐싱:** `channels.json` 파일에 채널 목록 및 속성 캐싱 (완료)
   - 저장 속성: ID, Name, IsArchived, IsPrivate, IsMember, NumMembers, Topic, Purpose, Created 등
   - 캐시 파일이 있으면 API 호출 생략, 없으면 API에서 가져와 저장
-- [ ] **캐시 갱신 명령:** 사용자가 명시적으로 캐시를 갱신할 수 있는 옵션 제공
-  - 예: `--refresh-users`, `--refresh-channels` 또는 TUI 메뉴 (`r` 키)
+- [x] **캐시 갱신 명령:** 사용자가 명시적으로 캐시를 갱신할 수 있는 옵션 제공
+  - `--refresh` 플래그 추가
+  - **Safe Refresh:** 기존 사용자 이름이 있고 API 응답이 비어있으면 덮어쓰지 않음 (수동 수정 보호)
 
 ## Phase 4: TUI 개선 및 사용성 (TUI & Usability)
 

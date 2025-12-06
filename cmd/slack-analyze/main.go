@@ -6,8 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"time"
+
 	"github.com/chanseok/slackExtract/internal/config"
 	"github.com/chanseok/slackExtract/internal/llm"
+	"github.com/chanseok/slackExtract/internal/meta"
 )
 
 func main() {
@@ -48,15 +51,99 @@ func main() {
 
 	analyzer := llm.NewChannelAnalyzer(llmClient)
 
+	// Initialize MetaManager
+	var metaManager *meta.Manager
+	exportRoot := findExportRoot(os.Args[1])
+	if exportRoot != "" {
+		var err error
+		metaManager, err = meta.NewManager(exportRoot)
+		if err != nil {
+			fmt.Printf("Warning: Failed to initialize metadata manager: %v\n", err)
+		} else {
+			fmt.Printf("Metadata manager initialized at: %s\n", exportRoot)
+		}
+	}
+
 	// Process each file
 	for _, arg := range os.Args[1:] {
-		if err := analyzeFile(arg, analyzer); err != nil {
-			fmt.Printf("Error analyzing %s: %v\n", arg, err)
+		if err := processArg(arg, analyzer, metaManager); err != nil {
+			fmt.Printf("Error processing %s: %v\n", arg, err)
+		}
+	}
+
+	if metaManager != nil {
+		if err := metaManager.SaveIndex(); err != nil {
+			fmt.Printf("Warning: Failed to save metadata index: %v\n", err)
 		}
 	}
 }
 
-func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer) error {
+func processArg(path string, analyzer *llm.ChannelAnalyzer, mm *meta.Manager) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+				fullPath := filepath.Join(path, entry.Name())
+				if err := analyzeFile(fullPath, analyzer, mm); err != nil {
+					fmt.Printf("Error analyzing %s: %v\n", fullPath, err)
+				}
+			}
+		}
+		return nil
+	}
+
+	return analyzeFile(path, analyzer, mm)
+}
+
+func findExportRoot(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+
+	dir := filepath.Dir(abs)
+	// Check up to 3 levels up
+	for i := 0; i < 3; i++ {
+		if _, err := os.Stat(filepath.Join(dir, ".meta")); err == nil {
+			return dir
+		}
+		// Also check if we are in "export" dir even if .meta doesn't exist yet
+		if filepath.Base(dir) == "export" {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer, mm *meta.Manager) error {
+	// Extract channel name from filename
+	base := filepath.Base(filePath)
+	channelName := strings.TrimSuffix(base, ".md")
+
+	// Check if analysis already exists
+	outputDir, reportPath, err := getOutputPaths(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to determine output path: %w", err)
+	}
+
+	if _, err := os.Stat(reportPath); err == nil {
+		fmt.Printf("⏭️  Skipping %s (Analysis already exists)\n", channelName)
+		return nil
+	}
+
 	fmt.Printf("\n📊 Analyzing: %s\n", filePath)
 
 	// Read file content
@@ -64,10 +151,6 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
-
-	// Extract channel name from filename
-	base := filepath.Base(filePath)
-	channelName := strings.TrimSuffix(base, ".md")
 
 	fmt.Println("  🔍 Extracting topics...")
 	
@@ -83,10 +166,42 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer) error {
 	fmt.Printf("  ✅ Found %d topics, %d contributors\n", len(result.Topics), len(result.Contributors))
 
 	// Save report
-	// Construct output directory: export/.analysis/{channelName}
+	if err := llm.SaveAnalysisReport(result, outputDir); err != nil {
+		return fmt.Errorf("failed to save report: %w", err)
+	}
+
+	// Update metadata if manager is available
+	if mm != nil {
+		// Find channel by name
+		ch, exists := mm.GetChannelByName(channelName)
+		if exists {
+			analysisMeta := &meta.AnalysisMeta{
+				LastAnalyzedAt: time.Now(),
+				Model:          analyzer.GetClientModel(), // Need to expose this
+				Provider:       analyzer.GetClientProvider(), // Need to expose this
+				InputTokens:    result.Usage.PromptTokens,
+				OutputTokens:   result.Usage.CompletionTokens,
+				Cost:           result.EstimatedCost,
+				Language:       "ko", // Assuming Korean summary
+			}
+			if err := mm.UpdateChannelAnalysis(ch.ID, analysisMeta); err != nil {
+				fmt.Printf("Warning: Failed to update metadata for %s: %v\n", channelName, err)
+			}
+		} else {
+			// If channel not found in index (e.g. manually exported or index missing), we can't update by ID easily
+			// unless we assume channelName is ID or we add a way to add by name (which is risky without ID)
+			// For now, just warn
+			fmt.Printf("Warning: Channel %s not found in metadata index. Skipping metadata update.\n", channelName)
+		}
+	}
+
+	return nil
+}
+
+func getOutputPaths(filePath string) (string, string, error) {
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to get absolute path: %w", err)
+		return "", "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
 	dir := filepath.Dir(absPath)
@@ -109,11 +224,14 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer) error {
 	}
 
 	outputDir := filepath.Join(exportDir, ".analysis", categoryName)
-	if err := llm.SaveAnalysisReport(result, outputDir); err != nil {
-		return fmt.Errorf("failed to save report: %w", err)
-	}
 
-	return nil
+	// Extract channel name from filename
+	base := filepath.Base(filePath)
+	channelName := strings.TrimSuffix(base, ".md")
+
+	reportPath := filepath.Join(outputDir, fmt.Sprintf("%s_analysis.md", channelName))
+
+	return outputDir, reportPath, nil
 }
 
 func printUsage() {

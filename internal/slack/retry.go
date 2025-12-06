@@ -93,16 +93,16 @@ func withRetry[T any](cfg RetryConfig, operation string, fn func() (T, error)) (
 }
 
 // FetchChannelsWithRetry fetches channels with automatic retry on rate limit
-func FetchChannelsWithRetry(client *slack.Client, cfg RetryConfig) ([]slack.Channel, error) {
+func FetchChannelsWithRetry(client *slack.Client, cfg RetryConfig, refresh bool) ([]slack.Channel, error) {
 	return withRetry(cfg, "GetConversations", func() ([]slack.Channel, error) {
-		return FetchChannels(client)
+		return FetchChannels(client, refresh)
 	})
 }
 
 // FetchUsersWithRetry fetches users with automatic retry on rate limit
-func FetchUsersWithRetry(client *slack.Client, cfg RetryConfig) (map[string]string, error) {
+func FetchUsersWithRetry(client *slack.Client, cfg RetryConfig, refresh bool) (map[string]string, error) {
 	return withRetry(cfg, "GetUsers", func() (map[string]string, error) {
-		return FetchUsers(client)
+		return FetchUsers(client, refresh)
 	})
 }
 

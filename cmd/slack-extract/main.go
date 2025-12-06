@@ -1,17 +1,23 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/chanseok/slackExtract/internal/config"
+	"github.com/chanseok/slackExtract/internal/meta"
 	"github.com/chanseok/slackExtract/internal/slack"
 	"github.com/chanseok/slackExtract/internal/tui"
 )
 
 func main() {
+	// Parse flags
+	refresh := flag.Bool("refresh", false, "Force refresh of user and channel cache")
+	flag.Parse()
+
 	// 1. Load Config
 	cfg, err := config.Load()
 	if err != nil {
@@ -22,6 +28,13 @@ func main() {
 
 	fmt.Println("Slack Extract - Initializing...")
 
+	// Initialize Metadata Manager
+	metaManager, err := meta.NewManager("export")
+	if err != nil {
+		fmt.Printf("Warning: Could not initialize metadata manager: %v\n", err)
+		// Continue without metadata manager if it fails, or handle it appropriately
+	}
+
 	// 2. Initialize Slack Client
 	client, httpClient, err := slack.NewClient(cfg)
 	if err != nil {
@@ -30,21 +43,21 @@ func main() {
 	}
 
 	// 3. Fetch Channels (with caching)
-	channels, err := slack.FetchChannels(client)
+	channels, err := slack.FetchChannels(client, *refresh)
 	if err != nil {
 		fmt.Printf("Error fetching channels: %v\n", err)
 		os.Exit(1)
 	}
 
 	// 4. Fetch Users (with caching)
-	userMap, err := slack.FetchUsers(client)
+	userMap, err := slack.FetchUsers(client, *refresh)
 	if err != nil {
 		fmt.Printf("Warning: Could not fetch users: %v\n", err)
 		userMap = make(map[string]string)
 	}
 
 	// 5. Run TUI
-	initialModel := tui.NewModel(channels, client, httpClient, userMap, cfg)
+	initialModel := tui.NewModel(channels, client, httpClient, userMap, cfg, metaManager)
 	p := tea.NewProgram(initialModel, tea.WithAltScreen())
 	_, err = p.Run()
 	if err != nil {

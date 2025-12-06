@@ -24,7 +24,11 @@ func SaveAnalysisReport(result *AnalysisResult, outputDir string) error {
 	// Header
 	fmt.Fprintf(f, "# 📊 채널 분석 보고서: #%s\n\n", result.ChannelName)
 	fmt.Fprintf(f, "> **분석 일시:** %s  \n", time.Now().Format("2006-01-02 15:04:05"))
-	fmt.Fprintf(f, "> **총 메시지 수:** %d  \n\n", result.TotalMessages)
+	fmt.Fprintf(f, "> **총 메시지 수:** %d  \n", result.TotalMessages)
+	if result.EstimatedCost > 0 {
+		fmt.Fprintf(f, "> **LLM 비용:** $%.4f (%d tokens)  \n", result.EstimatedCost, result.Usage.TotalTokens)
+	}
+	fmt.Fprintln(f, "")
 	fmt.Fprintln(f, "---")
 	fmt.Fprintln(f, "")
 

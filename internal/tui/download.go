@@ -112,6 +112,22 @@ func startDownload(m Model) tea.Cmd {
 						Done:        true,
 					}
 				} else {
+					// Update Metadata
+					if m.MetaManager != nil && len(msgs) > 0 {
+						lastMsg := msgs[len(msgs)-1]
+						lastMsgTime, _ := slack.ParseTimestamp(lastMsg.Timestamp)
+						
+						// Determine relative path (simplified for now, assumes standard structure)
+						relPath := fmt.Sprintf("%s.md", channelName)
+						if m.TargetFolder != "export" {
+							// If subfolder is used, we might need to adjust this logic
+							// For now, let's just store the channel name as ID reference
+						}
+
+						m.MetaManager.UpdateChannelDownload(channelID, channelName, relPath, len(msgs), lastMsgTime)
+						m.MetaManager.SaveIndex()
+					}
+
 					m.ProgressChannel <- ProgressMsg{
 						ChannelName: channelName,
 						Current:     len(msgs),

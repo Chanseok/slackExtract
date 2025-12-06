@@ -25,6 +25,7 @@ type Client struct {
 	BaseURL    string
 	Model      string
 	HTTPClient *http.Client
+	TotalUsage Usage
 }
 
 // Config holds LLM configuration
@@ -81,18 +82,37 @@ type ChatMessage struct {
 	Content string `json:"content"`
 }
 
+// Usage tracks token usage
+type Usage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 // Chat sends a chat completion request (routes to appropriate provider)
-func (c *Client) Chat(messages []ChatMessage, temperature float64, maxTokens int) (string, error) {
+func (c *Client) Chat(messages []ChatMessage, temperature float64, maxTokens int) (string, Usage, error) {
 	if c.APIKey == "" {
-		return "", fmt.Errorf("LLM API key is not configured")
+		return "", Usage{}, fmt.Errorf("LLM API key is not configured")
 	}
+
+	var content string
+	var usage Usage
+	var err error
 
 	switch c.Provider {
 	case ProviderGemini:
-		return c.chatGemini(messages, temperature, maxTokens)
+		content, usage, err = c.chatGemini(messages, temperature, maxTokens)
 	default:
-		return c.chatOpenAI(messages, temperature, maxTokens)
+		content, usage, err = c.chatOpenAI(messages, temperature, maxTokens)
 	}
+
+	if err == nil {
+		c.TotalUsage.PromptTokens += usage.PromptTokens
+		c.TotalUsage.CompletionTokens += usage.CompletionTokens
+		c.TotalUsage.TotalTokens += usage.TotalTokens
+	}
+
+	return content, usage, err
 }
 
 // ============ OpenAI Implementation ============
@@ -111,13 +131,14 @@ type openAIChatResponse struct {
 		Message      ChatMessage `json:"message"`
 		FinishReason string      `json:"finish_reason"`
 	} `json:"choices"`
+	Usage Usage `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 	} `json:"error,omitempty"`
 }
 
-func (c *Client) chatOpenAI(messages []ChatMessage, temperature float64, maxTokens int) (string, error) {
+func (c *Client) chatOpenAI(messages []ChatMessage, temperature float64, maxTokens int) (string, Usage, error) {
 	reqBody := openAIChatRequest{
 		Model:       c.Model,
 		Messages:    messages,
@@ -127,12 +148,12 @@ func (c *Client) chatOpenAI(messages []ChatMessage, temperature float64, maxToke
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", c.BaseURL+"/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -140,29 +161,29 @@ func (c *Client) chatOpenAI(messages []ChatMessage, temperature float64, maxToke
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	var chatResp openAIChatResponse
 	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if chatResp.Error != nil {
-		return "", fmt.Errorf("API error: %s", chatResp.Error.Message)
+		return "", Usage{}, fmt.Errorf("API error: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no response from LLM")
+		return "", Usage{}, fmt.Errorf("no response from LLM")
 	}
 
-	return chatResp.Choices[0].Message.Content, nil
+	return chatResp.Choices[0].Message.Content, chatResp.Usage, nil
 }
 
 // ============ Gemini Implementation ============
@@ -197,6 +218,11 @@ type geminiResponse struct {
 		} `json:"content"`
 		FinishReason string `json:"finishReason"`
 	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount     int `json:"promptTokenCount"`
+		CandidatesTokenCount int `json:"candidatesTokenCount"`
+		TotalTokenCount      int `json:"totalTokenCount"`
+	} `json:"usageMetadata"`
 	Error *struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
@@ -204,7 +230,7 @@ type geminiResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func (c *Client) chatGemini(messages []ChatMessage, temperature float64, maxTokens int) (string, error) {
+func (c *Client) chatGemini(messages []ChatMessage, temperature float64, maxTokens int) (string, Usage, error) {
 	// Convert messages to Gemini format
 	var contents []geminiContent
 	var systemInstruction *geminiContent
@@ -243,7 +269,7 @@ func (c *Client) chatGemini(messages []ChatMessage, temperature float64, maxToke
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	// Gemini API URL format: /models/{model}:generateContent?key={apiKey}
@@ -251,45 +277,51 @@ func (c *Client) chatGemini(messages []ChatMessage, temperature float64, maxToke
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
+		return "", Usage{}, fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var geminiResp geminiResponse
 	if err := json.Unmarshal(body, &geminiResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w, body: %s", err, string(body))
+		return "", Usage{}, fmt.Errorf("failed to parse response: %w, body: %s", err, string(body))
 	}
 
 	if geminiResp.Error != nil {
-		return "", fmt.Errorf("Gemini API error: %s", geminiResp.Error.Message)
+		return "", Usage{}, fmt.Errorf("Gemini API error: %s", geminiResp.Error.Message)
 	}
 
 	if len(geminiResp.Candidates) == 0 {
-		return "", fmt.Errorf("no candidates returned from Gemini. Body: %s", string(body))
+		return "", Usage{}, fmt.Errorf("no candidates returned from Gemini. Body: %s", string(body))
 	}
 
 	if len(geminiResp.Candidates[0].Content.Parts) == 0 {
 		finishReason := geminiResp.Candidates[0].FinishReason
-		return "", fmt.Errorf("no content parts returned from Gemini. FinishReason: %s. Body: %s", finishReason, string(body))
+		return "", Usage{}, fmt.Errorf("no content parts returned from Gemini. FinishReason: %s. Body: %s", finishReason, string(body))
 	}
 
-	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+	usage := Usage{
+		PromptTokens:     geminiResp.UsageMetadata.PromptTokenCount,
+		CompletionTokens: geminiResp.UsageMetadata.CandidatesTokenCount,
+		TotalTokens:      geminiResp.UsageMetadata.TotalTokenCount,
+	}
+
+	return geminiResp.Candidates[0].Content.Parts[0].Text, usage, nil
 }
 
 // SimpleChat is a convenience method for single-turn conversations
@@ -298,7 +330,8 @@ func (c *Client) SimpleChat(systemPrompt, userPrompt string) (string, error) {
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
-	return c.Chat(messages, 0.3, 4096)
+	content, _, err := c.Chat(messages, 0.3, 4096)
+	return content, err
 }
 
 // DetectLanguage detects the language of the given text
@@ -318,7 +351,7 @@ Text: ` + text
 		{Role: "user", Content: prompt},
 	}
 
-	result, err := c.Chat(messages, 0, 10)
+	result, _, err := c.Chat(messages, 0, 10)
 	if err != nil {
 		return "en", err // Default to English on error
 	}

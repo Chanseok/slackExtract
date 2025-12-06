@@ -15,6 +15,8 @@ type AnalysisResult struct {
 	Topics        []Topic
 	Contributors  []Contributor
 	Summary       string // Korean summary
+	Usage         Usage  // Total usage for this analysis
+	EstimatedCost float64 // Estimated cost in USD
 }
 
 // Topic represents an identified discussion topic
@@ -58,38 +60,62 @@ func NewChannelAnalyzer(client *Client) *ChannelAnalyzer {
 	return &ChannelAnalyzer{client: client}
 }
 
+// GetClientModel returns the model name used by the client
+func (a *ChannelAnalyzer) GetClientModel() string {
+	return a.client.Model
+}
+
+// GetClientProvider returns the provider name used by the client
+func (a *ChannelAnalyzer) GetClientProvider() string {
+	return string(a.client.Provider)
+}
+
 // AnalyzeChannel performs comprehensive analysis on channel content
 func (a *ChannelAnalyzer) AnalyzeChannel(channelName, content string) (*AnalysisResult, error) {
 	result := &AnalysisResult{
 		ChannelName: channelName,
 	}
 
+	var totalUsage Usage
+
 	// Step 1: Extract Topics
-	topics, err := a.extractTopics(content)
+	topics, usage1, err := a.extractTopics(content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract topics: %w", err)
 	}
 	result.Topics = topics
+	totalUsage.PromptTokens += usage1.PromptTokens
+	totalUsage.CompletionTokens += usage1.CompletionTokens
+	totalUsage.TotalTokens += usage1.TotalTokens
 
 	// Step 2: Analyze Contributors
-	contributors, err := a.analyzeContributors(content)
+	contributors, usage2, err := a.analyzeContributors(content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze contributors: %w", err)
 	}
 	result.Contributors = contributors
+	totalUsage.PromptTokens += usage2.PromptTokens
+	totalUsage.CompletionTokens += usage2.CompletionTokens
+	totalUsage.TotalTokens += usage2.TotalTokens
 
 	// Step 3: Generate Korean Summary
-	summary, err := a.generateKoreanSummary(channelName, content, topics)
+	summary, usage3, err := a.generateKoreanSummary(channelName, content, topics)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
 	result.Summary = summary
+	totalUsage.PromptTokens += usage3.PromptTokens
+	totalUsage.CompletionTokens += usage3.CompletionTokens
+	totalUsage.TotalTokens += usage3.TotalTokens
+
+	result.Usage = totalUsage
+	result.EstimatedCost = CalculateCost(a.client.Model, totalUsage)
 
 	return result, nil
 }
 
 // extractTopics identifies main discussion topics from the content
-func (a *ChannelAnalyzer) extractTopics(content string) ([]Topic, error) {
+func (a *ChannelAnalyzer) extractTopics(content string) ([]Topic, Usage, error) {
 	// Truncate content if too long (LLM context limit)
 	truncatedContent := truncateForLLM(content, 15000)
 
@@ -124,18 +150,18 @@ Conversation:
 	}
 
 	// Increased max tokens to 16000 to support reasoning models like gemini-2.5-flash which use tokens for thinking
-	response, err := a.client.Chat(messages, 0.2, 16000)
+	response, usage, err := a.client.Chat(messages, 0.2, 16000)
 	if err != nil {
-		return nil, err
+		return nil, Usage{}, err
 	}
 
 	// Parse JSON response
 	topics := parseTopicsFromJSON(response)
-	return topics, nil
+	return topics, usage, nil
 }
 
 // analyzeContributors identifies key contributors and their involvement
-func (a *ChannelAnalyzer) analyzeContributors(content string) ([]Contributor, error) {
+func (a *ChannelAnalyzer) analyzeContributors(content string) ([]Contributor, Usage, error) {
 	truncatedContent := truncateForLLM(content, 15000)
 
 	prompt := `Analyze the following Slack conversation and identify the key contributors.
@@ -166,17 +192,17 @@ Conversation:
 		{Role: "user", Content: prompt},
 	}
 
-	response, err := a.client.Chat(messages, 0.2, 16000)
+	response, usage, err := a.client.Chat(messages, 0.2, 16000)
 	if err != nil {
-		return nil, err
+		return nil, Usage{}, err
 	}
 
 	contributors := parseContributorsFromJSON(response)
-	return contributors, nil
+	return contributors, usage, nil
 }
 
 // generateKoreanSummary creates a comprehensive Korean summary
-func (a *ChannelAnalyzer) generateKoreanSummary(channelName, content string, topics []Topic) (string, error) {
+func (a *ChannelAnalyzer) generateKoreanSummary(channelName, content string, topics []Topic) (string, Usage, error) {
 	truncatedContent := truncateForLLM(content, 12000)
 
 	// Build topic context

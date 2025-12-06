@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chanseok/slackExtract/internal/config"
 	"github.com/chanseok/slackExtract/internal/manager"
+	"github.com/chanseok/slackExtract/internal/meta"
 	"github.com/slack-go/slack"
 )
 
@@ -52,6 +53,9 @@ type Model struct {
 	DownloadAction string // "skip", "incremental", "overwrite"
 	ActionCursor   int    // 0: Skip, 1: Incremental, 2: Overwrite, 3: Cancel
 
+	// Metadata Manager
+	MetaManager    *meta.Manager
+
 	// Progress / Download State
 	SlackClient      *slack.Client
 	HTTPClient       *http.Client
@@ -68,7 +72,7 @@ type Model struct {
 	TotalSelected    int
 }
 
-func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string, cfg *config.Config) Model {
+func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string, cfg *config.Config, metaManager *meta.Manager) Model {
 	m := Model{
 		Channels:       channels,
 		Selected:       make(map[string]struct{}),
@@ -82,6 +86,7 @@ func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.C
 		Config:         cfg,
 		TargetFolder:   "export",
 		DownloadAction: "skip",
+		MetaManager:    metaManager,
 	}
 	m.updateFilter()
 	return m

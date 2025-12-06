@@ -5,9 +5,33 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/slack-go/slack"
 )
+
+// ParseTimestamp converts a Slack timestamp string to time.Time
+func ParseTimestamp(ts string) (time.Time, error) {
+	parts := strings.Split(ts, ".")
+	sec, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	nsec := int64(0)
+	if len(parts) > 1 {
+		// Pad with zeros to ensure nanoseconds (up to 9 digits)
+		nsStr := parts[1]
+		if len(nsStr) < 9 {
+			nsStr += strings.Repeat("0", 9-len(nsStr))
+		} else if len(nsStr) > 9 {
+			nsStr = nsStr[:9]
+		}
+		nsec, _ = strconv.ParseInt(nsStr, 10, 64)
+	}
+	return time.Unix(sec, nsec), nil
+}
 
 // Message wraps slack.Message to include full reply history
 type Message struct {
@@ -32,36 +56,38 @@ type CachedChannel struct {
 	Created    int64  `json:"created"`
 }
 
-func FetchChannels(client *slack.Client) ([]slack.Channel, error) {
+func FetchChannels(client *slack.Client, forceRefresh bool) ([]slack.Channel, error) {
 	cacheFile := "channels.json"
 
 	// 1. Try to load from cache
-	if _, err := os.Stat(cacheFile); err == nil {
-		data, err := os.ReadFile(cacheFile)
-		if err == nil {
-			var cachedChannels []CachedChannel
-			if err := json.Unmarshal(data, &cachedChannels); err == nil {
-				fmt.Printf("Loaded %d channels from cache (channels.json).\n", len(cachedChannels))
-				// Convert CachedChannel to slack.Channel
-				channels := make([]slack.Channel, len(cachedChannels))
-				for i, cc := range cachedChannels {
-					ch := slack.Channel{}
-					ch.ID = cc.ID
-					ch.Name = cc.Name
-					ch.IsArchived = cc.IsArchived
-					ch.IsPrivate = cc.IsPrivate
-					ch.IsChannel = cc.IsChannel
-					ch.IsGroup = cc.IsGroup
-					ch.IsIM = cc.IsIM
-					ch.IsMpIM = cc.IsMpIM
-					ch.IsMember = cc.IsMember
-					ch.NumMembers = cc.NumMembers
-					ch.Topic = slack.Topic{Value: cc.Topic}
-					ch.Purpose = slack.Purpose{Value: cc.Purpose}
-					ch.Created = slack.JSONTime(cc.Created)
-					channels[i] = ch
+	if !forceRefresh {
+		if _, err := os.Stat(cacheFile); err == nil {
+			data, err := os.ReadFile(cacheFile)
+			if err == nil {
+				var cachedChannels []CachedChannel
+				if err := json.Unmarshal(data, &cachedChannels); err == nil {
+					fmt.Printf("Loaded %d channels from cache (channels.json).\n", len(cachedChannels))
+					// Convert CachedChannel to slack.Channel
+					channels := make([]slack.Channel, len(cachedChannels))
+					for i, cc := range cachedChannels {
+						ch := slack.Channel{}
+						ch.ID = cc.ID
+						ch.Name = cc.Name
+						ch.IsArchived = cc.IsArchived
+						ch.IsPrivate = cc.IsPrivate
+						ch.IsChannel = cc.IsChannel
+						ch.IsGroup = cc.IsGroup
+						ch.IsIM = cc.IsIM
+						ch.IsMpIM = cc.IsMpIM
+						ch.IsMember = cc.IsMember
+						ch.NumMembers = cc.NumMembers
+						ch.Topic = slack.Topic{Value: cc.Topic}
+						ch.Purpose = slack.Purpose{Value: cc.Purpose}
+						ch.Created = slack.JSONTime(cc.Created)
+						channels[i] = ch
+					}
+					return channels, nil
 				}
-				return channels, nil
 			}
 		}
 	}
@@ -122,9 +148,10 @@ func FetchChannels(client *slack.Client) ([]slack.Channel, error) {
 	return allChannels, nil
 }
 
-func FetchUsers(client *slack.Client) (map[string]string, error) {
+func FetchUsers(client *slack.Client, forceRefresh bool) (map[string]string, error) {
 	cacheFile := "users.json"
 	userMap := make(map[string]string)
+	cacheExists := false
 
 	// 1. Try to load from cache
 	if _, err := os.Stat(cacheFile); err == nil {
@@ -132,14 +159,18 @@ func FetchUsers(client *slack.Client) (map[string]string, error) {
 		if err == nil {
 			if err := json.Unmarshal(data, &userMap); err == nil {
 				fmt.Println("Loaded user list from cache (users.json).")
-				return userMap, nil
+				cacheExists = true
 			}
 		}
 	}
 
+	if cacheExists && !forceRefresh {
+		return userMap, nil
+	}
+
 	// 2. Fetch from API
 	fmt.Println("Fetching user list from Slack API...")
-	
+
 	// slack-go GetUsers fetches all users (handles pagination internally)
 	allUsers, err := client.GetUsers()
 	if err != nil {
@@ -148,7 +179,15 @@ func FetchUsers(client *slack.Client) (map[string]string, error) {
 	fmt.Printf("  -> Fetched %d users total.\n", len(allUsers))
 
 	for _, u := range allUsers {
-		userMap[u.ID] = u.RealName
+		// Safe Refresh: Only overwrite if API returns a non-empty name
+		if u.RealName != "" {
+			userMap[u.ID] = u.RealName
+		} else {
+			// If RealName is empty, try Name (handle) if we don't have a name yet
+			if _, exists := userMap[u.ID]; !exists && u.Name != "" {
+				userMap[u.ID] = u.Name
+			}
+		}
 	}
 
 	// 3. Save to cache
