@@ -118,10 +118,13 @@ Format your response as JSON:
 Conversation:
 ` + truncatedContent
 
-	response, err := a.client.SimpleChat(
-		"You are an expert at analyzing team communications and identifying key discussion topics.",
-		prompt,
-	)
+	messages := []ChatMessage{
+		{Role: "system", Content: "You are an expert at analyzing team communications and identifying key discussion topics."},
+		{Role: "user", Content: prompt},
+	}
+
+	// Increased max tokens to 16000 to support reasoning models like gemini-2.5-flash which use tokens for thinking
+	response, err := a.client.Chat(messages, 0.2, 16000)
 	if err != nil {
 		return nil, err
 	}
@@ -158,10 +161,12 @@ Format your response as JSON:
 Conversation:
 ` + truncatedContent
 
-	response, err := a.client.SimpleChat(
-		"You are an expert at analyzing team dynamics and identifying key contributors in discussions.",
-		prompt,
-	)
+	messages := []ChatMessage{
+		{Role: "system", Content: "You are an expert at analyzing team dynamics and identifying key contributors in discussions."},
+		{Role: "user", Content: prompt},
+	}
+
+	response, err := a.client.Chat(messages, 0.2, 16000)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +202,12 @@ func (a *ChannelAnalyzer) generateKoreanSummary(channelName, content string, top
 대화 내용:
 %s`, channelName, topicList.String(), truncatedContent)
 
-	return a.client.SimpleChat(
-		"당신은 팀 커뮤니케이션을 분석하고 핵심 내용을 명확하게 요약하는 전문가입니다. 항상 한국어로 응답합니다.",
-		prompt,
-	)
+	messages := []ChatMessage{
+		{Role: "system", Content: "당신은 팀 커뮤니케이션을 분석하고 핵심 내용을 명확하게 요약하는 전문가입니다. 항상 한국어로 응답합니다."},
+		{Role: "user", Content: prompt},
+	}
+
+	return a.client.Chat(messages, 0.2, 16000)
 }
 
 // ProcessMultilingualContent handles translation of non-English messages

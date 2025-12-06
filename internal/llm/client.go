@@ -267,17 +267,26 @@ func (c *Client) chatGemini(messages []ChatMessage, temperature float64, maxToke
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
 	var geminiResp geminiResponse
 	if err := json.Unmarshal(body, &geminiResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", fmt.Errorf("failed to parse response: %w, body: %s", err, string(body))
 	}
 
 	if geminiResp.Error != nil {
 		return "", fmt.Errorf("Gemini API error: %s", geminiResp.Error.Message)
 	}
 
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return "", fmt.Errorf("no response from Gemini")
+	if len(geminiResp.Candidates) == 0 {
+		return "", fmt.Errorf("no candidates returned from Gemini. Body: %s", string(body))
+	}
+
+	if len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		finishReason := geminiResp.Candidates[0].FinishReason
+		return "", fmt.Errorf("no content parts returned from Gemini. FinishReason: %s. Body: %s", finishReason, string(body))
 	}
 
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
