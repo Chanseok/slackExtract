@@ -207,11 +207,12 @@ func FetchHistory(client *slack.Client, channelID string) ([]Message, error) {
 // ProgressCallback is a function type for reporting progress
 type ProgressCallback func(current int, total int, status string)
 
-func FetchHistoryWithProgress(client *slack.Client, channelID string, callback ProgressCallback) ([]Message, error) {
+func FetchHistoryWithProgress(client *slack.Client, channelID string, callback ProgressCallback, oldest string) ([]Message, error) {
 	var allMessages []Message
 	params := &slack.GetConversationHistoryParameters{
 		ChannelID: channelID,
 		Limit:     1000,
+		Oldest:    oldest, // Support incremental fetch
 	}
 
 	if callback != nil {

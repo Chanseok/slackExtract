@@ -66,6 +66,66 @@
   - [x] systemInstruction 및 role 매핑 구현
 - [x] **Provider 자동 감지:** `LLM_PROVIDER` 환경 변수로 전환
 
+## Phase 8: 스마트 다운로드 (Smart Download) - 신규
+> 상세 설계: `docs/DESIGN_SMART_DOWNLOAD.md`
+
+### 8.1 기존 파일 감지
+- [x] `export/` 하위 모든 폴더 스캔하여 기존 파일 탐지
+- [x] 채널명-파일명 매칭 로직
+- [x] 파일 메타정보 추출 (크기, 메시지 수, 마지막 날짜)
+
+### 8.2 다운로드 확인 TUI
+- [x] 다운로드 전 확인 화면 표시
+- [x] 저장 폴더 선택 UI (기존 폴더 / 새 폴더 생성)
+- [x] 기존 파일 정보 및 액션 선택 (Skip/Incremental/Overwrite/Cancel)
+
+### 8.3 증분 다운로드 (Incremental Download)
+- [x] `.md` 파일에서 마지막 메시지 타임스탬프 추출
+- [x] Slack API `oldest` 파라미터로 이후 메시지만 요청
+- [x] 기존 파일에 새 메시지 병합 (날짜 순서 유지)
+
+### 8.4 Archived 채널 처리
+- [x] Archived 상태 표시 및 안내 메시지
+- [x] 이미 다운로드된 Archived 채널은 자동 Skip 권장
+
+## Phase 9: 메타데이터 시스템 (Metadata System) - 신규
+
+### 9.1 폴더 구조
+```
+export/
+├── .meta/
+│   ├── index.json          # 전체 채널 인덱스
+│   └── channels/           # 채널별 상세 메타
+│       └── {channel}.json
+├── .analysis/              # LLM 분석 결과
+│   └── {channel}/
+│       ├── meta.json
+│       └── *.md
+└── {category}/             # 사용자 정의 폴더
+    └── {channel}.md        # 원본 (불변)
+```
+
+### 9.2 메타데이터 관리
+- [ ] `internal/meta/` 패키지 생성
+- [ ] 인덱스 및 채널 메타 CRUD 기능
+- [ ] 다운로드 이력 기록 (일시, 타입, 메시지 범위)
+- [ ] 다운로드 완료 시 자동 메타 업데이트
+
+## Phase 10: LLM 비용 추적 (Cost Tracking) - 신규
+
+### 10.1 토큰 카운팅
+- [ ] 입력 텍스트 토큰 수 추정
+- [ ] API 응답에서 실제 토큰 수 추출
+
+### 10.2 비용 계산
+- [ ] Provider별 토큰 단가 설정
+- [ ] 분석 전 예상 비용 표시
+- [ ] 분석 후 실제 비용 기록
+
+### 10.3 분석 이력 저장
+- [ ] 분석 메타데이터 저장 (모델, 프롬프트, 토큰, 비용)
+- [ ] 이전 분석 조회 및 재분석 방지
+
 ## Phase 3.5: 로컬 캐싱 시스템 (Local Caching)
 - [x] **사용자 캐싱:** `users.json` 파일에 사용자 목록 캐싱 (완료)
 - [x] **채널 캐싱:** `channels.json` 파일에 채널 목록 및 속성 캐싱 (완료)

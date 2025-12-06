@@ -107,11 +107,12 @@ func FetchUsersWithRetry(client *slack.Client, cfg RetryConfig) (map[string]stri
 }
 
 // FetchHistoryWithRetryAndProgress fetches channel history with retry and progress callback
-func FetchHistoryWithRetryAndProgress(client *slack.Client, channelID string, cfg RetryConfig, callback ProgressCallback) ([]Message, error) {
+func FetchHistoryWithRetryAndProgress(client *slack.Client, channelID string, cfg RetryConfig, callback ProgressCallback, oldest string) ([]Message, error) {
 	var allMessages []Message
 	params := &slack.GetConversationHistoryParameters{
 		ChannelID: channelID,
 		Limit:     200, // Smaller batches to reduce rate limit impact
+		Oldest:    oldest,
 	}
 
 	if callback != nil {

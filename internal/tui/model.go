@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chanseok/slackExtract/internal/config"
+	"github.com/chanseok/slackExtract/internal/manager"
 	"github.com/slack-go/slack"
 )
 
@@ -42,6 +43,15 @@ type Model struct {
 	ShowArchived   bool
 	ShowDMs        bool
 
+	// Confirm Download Mode
+	ConfirmMode    bool
+	TargetFolder   string
+	SubFolders     []string
+	FolderCursor   int
+	ExistingFiles  map[string]manager.ChannelMeta
+	DownloadAction string // "skip", "incremental", "overwrite"
+	ActionCursor   int    // 0: Skip, 1: Incremental, 2: Overwrite, 3: Cancel
+
 	// Progress / Download State
 	SlackClient      *slack.Client
 	HTTPClient       *http.Client
@@ -60,16 +70,18 @@ type Model struct {
 
 func NewModel(channels []slack.Channel, client *slack.Client, httpClient *http.Client, userMap map[string]string, cfg *config.Config) Model {
 	m := Model{
-		Channels:     channels,
-		Selected:     make(map[string]struct{}),
-		ShowPublic:   true,
-		ShowPrivate:  true,
-		ShowArchived: true,
-		ShowDMs:      true,
-		SlackClient:  client,
-		HTTPClient:   httpClient,
-		UserMap:      userMap,
-		Config:       cfg,
+		Channels:       channels,
+		Selected:       make(map[string]struct{}),
+		ShowPublic:     true,
+		ShowPrivate:    true,
+		ShowArchived:   true,
+		ShowDMs:        true,
+		SlackClient:    client,
+		HTTPClient:     httpClient,
+		UserMap:        userMap,
+		Config:         cfg,
+		TargetFolder:   "export",
+		DownloadAction: "skip",
 	}
 	m.updateFilter()
 	return m
@@ -80,6 +92,12 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle Confirm Mode
+	if m.ConfirmMode {
+		newModel, cmd := m.updateConfirm(msg)
+		return newModel, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.Height = msg.Height - 5 // Reserve lines for header/footer
@@ -182,14 +200,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(m.Selected) > 0 && !m.IsDownloading {
-				m.IsDownloading = true
-				m.StartTime = time.Now()
-				m.TotalSelected = len(m.Selected)
-				m.ProgressChannel = make(chan ProgressMsg)
-				return m, tea.Batch(
-					startDownload(m),
-					waitForUpdate(m.ProgressChannel),
-				)
+				// Switch to Confirm Mode instead of starting download immediately
+				m.ConfirmMode = true
+				m.scanForExistingFiles()
+				return m, nil
 			}
 		}
 
@@ -326,6 +340,9 @@ func (m Model) View() string {
 	}
 	if m.IsDownloading {
 		return m.renderProgress()
+	}
+	if m.ConfirmMode {
+		return m.renderConfirmView()
 	}
 	if m.Quitting {
 		return "Starting export...\n"

@@ -64,6 +64,32 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [x] **Google Gemini API:** Gemini 1.5 Flash, Gemini 1.5 Pro 지원
 - [x] **설정:** `.env` 파일을 통한 Provider 선택 (`LLM_PROVIDER=openai|gemini`)
 
+### 2.8 스마트 다운로드 (Smart Download) - 신규
+> 상세 설계: `docs/DESIGN_SMART_DOWNLOAD.md`
+
+- [ ] **다운로드 전 확인:** 채널 선택 후 즉시 다운로드하지 않고 확인 화면 표시
+- [ ] **저장 폴더 선택:** 기존 하위 폴더 선택 또는 새 폴더 생성
+- [ ] **기존 파일 감지:** 이미 다운로드된 채널 표시 (크기, 메시지 수, 마지막 날짜)
+- [ ] **액션 선택:**
+    - Skip: 새 채널만 다운로드
+    - Incremental: 마지막 메시지 이후만 추가 다운로드
+    - Overwrite: 전체 재다운로드
+    - Cancel: 취소
+- [ ] **Archived 채널 처리:** 변경 없음 안내, 자동 Skip 권장
+- [ ] **증분 다운로드:** 마지막 타임스탬프 이후 메시지만 추출하여 기존 파일에 병합
+
+### 2.9 파일 관리 및 메타데이터 (File Management) - 신규
+
+- [ ] **폴더 구조화:** `export/{category}/{channel}.md` 형태로 카테고리별 관리
+- [ ] **원본 불변성:** 다운로드된 `.md` 파일은 원본으로 취급, 분석 결과는 별도 저장
+- [ ] **메타데이터 관리:**
+    - `.meta/index.json`: 전체 채널 인덱스
+    - `.meta/channels/{channel}.json`: 채널별 다운로드 이력, 분석 이력
+- [ ] **LLM 비용 추적:**
+    - 분석 시 토큰 사용량 및 예상 비용 기록
+    - Provider별 단가 설정
+    - 분석 이력 저장 (모델, 프롬프트 버전, 토큰, 비용)
+
 ## 3. 비기능적 요구사항 (Non-Functional Requirements)
 
 ### 3.1 성능 및 효율성

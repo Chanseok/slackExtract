@@ -44,6 +44,34 @@ func startDownload(m Model) tea.Cmd {
 					AllDone:     false,
 				}
 
+				// Check existing file action
+				if m.DownloadAction == "skip" {
+					if _, exists := m.ExistingFiles[channelName]; exists {
+						m.ProgressChannel <- ProgressMsg{
+							ChannelName: channelName,
+							Status:      "Skipped (Already exists)",
+							Done:        true,
+						}
+						time.Sleep(200 * time.Millisecond)
+						continue
+					}
+				}
+
+				// Determine oldest timestamp for incremental download
+				var oldest string
+				if m.DownloadAction == "incremental" {
+					if meta, exists := m.ExistingFiles[channelName]; exists {
+						if !meta.LastMessageTime.IsZero() {
+							oldest = fmt.Sprintf("%d.000000", meta.LastMessageTime.Unix())
+							m.ProgressChannel <- ProgressMsg{
+								ChannelName: channelName,
+								Status:      fmt.Sprintf("Incremental from %s...", meta.LastMessageTime.Format("2006-01-02")),
+								Done:        false,
+							}
+						}
+					}
+				}
+
 				// Fetch History with retry support
 				retryCfg := slack.DefaultRetryConfig()
 				msgs, err := slack.FetchHistoryWithRetryAndProgress(m.SlackClient, channelID, retryCfg, func(current, total int, status string) {
@@ -55,7 +83,7 @@ func startDownload(m Model) tea.Cmd {
 						Done:        false,
 						AllDone:     false,
 					}
-				})
+				}, oldest) // Pass oldest timestamp
 
 				if err != nil {
 					m.ProgressChannel <- ProgressMsg{
@@ -75,7 +103,8 @@ func startDownload(m Model) tea.Cmd {
 					Done:        false,
 				}
 
-				err = export.SaveToMarkdown(m.HTTPClient, channelName, msgs, m.UserMap, m.Config.DownloadAttachments)
+				// Use TargetFolder from model
+				err = export.SaveToMarkdown(m.HTTPClient, channelName, msgs, m.UserMap, m.Config.DownloadAttachments, m.TargetFolder, m.DownloadAction == "incremental")
 				if err != nil {
 					m.ProgressChannel <- ProgressMsg{
 						ChannelName: channelName,
