@@ -19,8 +19,8 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 
 ### 2.3 데이터 추출 (Extraction)
 - [x] **메시지 수집:** 선택된 채널의 메시지 히스토리를 가져온다. (`GetConversationHistory` + Pagination)
-- [ ] **스레드(Thread) 지원:** 각 메시지에 달린 댓글(Thread)을 빠짐없이 가져와 계층 구조를 유지한다.
-- [ ] **Rate Limit 처리:** Slack API의 속도 제한을 준수하여 차단되지 않도록 요청 속도를 조절한다.
+- [x] **스레드(Thread) 지원:** 각 메시지에 달린 댓글(Thread)을 빠짐없이 가져와 계층 구조를 유지한다.
+- [x] **Rate Limit 처리:** Slack API의 속도 제한을 준수하여 차단되지 않도록 Exponential Backoff 재시도 로직 적용.
 
 ### 2.4 변환 및 저장 (Conversion & Storage)
 - [x] **Markdown 변환:** Slack 전용 포맷(mrkdwn)을 표준 Markdown으로 변환한다.
@@ -44,20 +44,25 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [ ] **수동 갱신:** CLI 명령어 또는 캐시 파일 삭제를 통해 사용자 목록을 갱신할 수 있다.
 
 ### 2.6 LLM 분석 (LLM Analysis)
-- [ ] **다국어 처리:**
+- [x] **다국어 처리:**
     - 언어 자동 감지 (영어, 네덜란드어, 기타)
     - 비영어 메시지는 영어 번역과 원문을 함께 병기
     - 최종 분석 결과는 한국어로 출력
-- [ ] **Topic 분석:**
+- [x] **Topic 분석:**
     - 주요 Topic 자동 추출 및 클러스터링
     - 중요도 점수 산정 기준: 스레드 길이, 이모지 반응 수, 특정 키워드("urgent", "important", "blocker" 등)
     - Topic별 핵심 요약 생성
-- [ ] **의견 분석:**
+- [x] **의견 분석:**
     - 긍정/부정/중립 의견 분류 (Sentiment Analysis)
     - 주요 논쟁점 및 합의점 하이라이트
-- [ ] **인물 분석:**
+- [x] **인물 분석:**
     - 인물별 Topic 참여도 및 발언 빈도 통계
     - 주요 기여자(Key Contributors) 식별
+
+### 2.7 LLM Provider 지원 (Multi-Provider)
+- [x] **OpenAI API:** GPT-4, GPT-4o, GPT-3.5-turbo 지원
+- [x] **Google Gemini API:** Gemini 1.5 Flash, Gemini 1.5 Pro 지원
+- [x] **설정:** `.env` 파일을 통한 Provider 선택 (`LLM_PROVIDER=openai|gemini`)
 
 ## 3. 비기능적 요구사항 (Non-Functional Requirements)
 
@@ -70,7 +75,7 @@ Slack의 대화 내용을 채널별로 추출하여 Markdown 파일로 저장하
 - [x] **TUI (Text User Interface):** `Bubble Tea` 라이브러리를 활용하여 미려하고 직관적인 CLI 환경을 제공한다.
 - [x] **Lipgloss 스타일링:** 채널 유형별 색상 구분, 선택 상태 하이라이트 등 시각적 개선 적용.
 - [x] **필터 메뉴 모드:** `f` 키로 필터 설정 메뉴를 열어 채널 속성별 표시 여부를 토글할 수 있다.
-- [ ] **진행 상황 표시:** 다운로드 및 변환 진행률(Progress Bar)을 시각적으로 보여준다.
+- [x] **진행 상황 표시:** 다운로드 및 변환 진행률(Progress Bar)을 시각적으로 보여준다. (ETA 포함)
 
 ### 3.3 아키텍처 및 코드 품질 (Architecture & Code Quality)
 - [ ] **Standard Go Project Layout:** Go 표준 프로젝트 구조(`cmd`, `internal`, `pkg`)를 준수하여 코드의 모듈화와 재사용성을 높인다.

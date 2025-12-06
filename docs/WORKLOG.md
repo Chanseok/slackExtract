@@ -406,10 +406,107 @@ slackExtract/
 | 비동기 처리 | `tea.Cmd` + Goroutine | UI 블로킹 없이 긴 작업을 수행하고 메시지로 상태 업데이트 |
 | 첨부파일 기본값 | URL Only | LLM 활용 시 텍스트 처리가 우선이며, 파일 다운로드는 선택적 기능으로 전환 |
 
-### 🎯 다음 작업 (TODO)
+---
 
-1. **채널 요약:** LLM 연동을 위한 프롬프트 템플릿 또는 요약 기능 검토.
-2. **에러 핸들링:** 네트워크 오류 시 재시도 로직 보강.
+## 2025-12-06 (Day 2)
+
+### 📋 주요 작업 내용
+
+#### 1. 텍스트 정제 (Text Cleaning) 기능 구현
+- **목표:** LLM 학습/분석 효율을 높이기 위해 Slack 특유의 포맷을 표준화된 형태로 변환.
+- **구현 (`internal/export/cleaner.go`):**
+  - `CleanSlackText()` 함수: 채널 링크(`<#C123|general>` → `#general`), URL 포맷(`<url|text>` → `[text](url)`), HTML 엔티티 디코딩(`&lt;`, `&gt;`, `&amp;`)
+  - `IsSystemMessage()` 함수: 입/퇴장 메시지 등 시스템 메시지 필터링
+- **효과:** LLM에 입력할 텍스트의 노이즈 감소, 토큰 효율성 향상.
+
+#### 2. Rate Limit 자동 재시도 구현
+- **목표:** Slack API의 429 Too Many Requests 오류 발생 시 자동 재시도.
+- **구현 (`internal/slack/retry.go`):**
+  - `withRetry[T]()` 제네릭 함수: Exponential Backoff 알고리즘 적용
+  - 최대 5회 재시도, 초기 대기 1초 → 2초 → 4초 → 8초 → 16초
+  - `Retry-After` 헤더가 있으면 해당 시간만큼 대기
+- **적용:** `FetchHistory`, `FetchThreadReplies`, `FetchUsers` 등 모든 API 호출에 적용.
+
+#### 3. LLM 분석 파이프라인 구현 (Phase 6)
+- **목표:** 추출된 Slack 대화를 LLM으로 분석하여 다국어 번역, Topic 분석, 의견 분석, 인물 분석을 수행.
+- **구현:**
+  - `internal/llm/client.go`: OpenAI API 클라이언트 (GPT-4, GPT-4o 지원)
+  - `internal/llm/analyzer.go`: 채널 분석 로직 (`Analyze()` 메인 함수)
+    - `translateMessages()`: 비영어 메시지를 영어로 번역 (원문 병기)
+    - `extractTopics()`: 주요 Topic 자동 추출 및 중요도 점수 산정
+    - `analyzeSentiment()`: 긍정/부정/중립 의견 분류
+    - `analyzeContributors()`: 인물별 참여도 통계
+    - `generateKoreanSummary()`: 최종 요약을 한국어로 생성
+  - `internal/llm/report.go`: Markdown 보고서 생성기
+- **CLI 도구:** `cmd/slack-analyze/main.go` - 추출된 Markdown 파일을 분석하는 CLI
+- **결과 포맷:** `export/{채널명}_analysis.md` 형태로 분석 결과 저장.
+
+#### 4. Google Gemini API 직접 지원 (Phase 7)
+- **배경:** OpenAI 외에 Google Gemini API도 지원하여 사용자 선택의 폭을 넓힘.
+- **구현 (`internal/llm/client.go`):**
+  - `Provider` 타입 추가: `openai`, `gemini`
+  - `chatGemini()` 함수: Gemini API 직접 호출
+    - OpenAI 메시지 포맷을 Gemini 포맷으로 변환
+    - `system` role → `systemInstruction` 필드
+    - `user`/`assistant` → `user`/`model` role 매핑
+  - 자동 Provider 감지: `LLM_PROVIDER` 환경 변수 기반
+- **지원 모델:**
+  - OpenAI: `gpt-4`, `gpt-4o`, `gpt-3.5-turbo`
+  - Gemini: `gemini-1.5-flash`, `gemini-1.5-pro`
+
+### 🔧 기술적 결정 사항
+
+| 항목 | 결정 | 이유 |
+|------|------|------|
+| LLM 클라이언트 | 자체 구현 | 외부 SDK 의존성 최소화, 두 Provider 통합 관리 용이 |
+| Gemini 지원 방식 | 직접 API 호출 | OpenAI 호환 프록시 불필요, 네이티브 기능 활용 |
+| 분석 결과 포맷 | Markdown | 가독성 높음, 다른 도구에서 활용 용이 |
+| 한국어 요약 | 별도 프롬프트 | 번역 품질 향상을 위해 단계적 처리 |
+
+### ⚠️ 이슈 및 해결
+
+| 이슈 | 원인 | 해결 |
+|------|------|------|
+| Gemini system role 미지원 | Gemini API는 `system` role 직접 미지원 | `systemInstruction` 필드로 분리하여 전달 |
+| 대량 메시지 분석 시 토큰 초과 | 긴 대화 기록 전체 전송 불가 | 메시지 청크 분할 및 요약 후 통합 전략 적용 |
+
+### 📁 새로 생성된 파일
+
+```
+internal/
+├── llm/
+│   ├── client.go      # LLM API 클라이언트 (OpenAI + Gemini)
+│   ├── analyzer.go    # 채널 분석 로직
+│   └── report.go      # Markdown 보고서 생성
+├── export/
+│   └── cleaner.go     # 텍스트 정제 함수
+└── slack/
+    └── retry.go       # Rate Limit 재시도 로직
+
+cmd/
+└── slack-analyze/
+    └── main.go        # LLM 분석 CLI 도구
+```
+
+### 🎯 완료된 Phase 요약
+
+| Phase | 상태 | 주요 기능 |
+|-------|------|----------|
+| Phase 1 | ✅ 완료 | 환경 설정, 요구사항 정의 |
+| Phase 2 | ✅ 완료 | TUI 프로토타입, 채널 목록 조회 |
+| Phase 3 | ✅ 완료 | 메시지/스레드 다운로드, 사용자 매핑 |
+| Phase 3.5 | ✅ 완료 | 사용자/채널 캐싱 |
+| Phase 4 | ✅ 완료 | 텍스트 정제, Rate Limit 처리 |
+| Phase 5 | ✅ 완료 | Progress Bar, 첨부파일 옵션 |
+| Phase 6 | ✅ 완료 | LLM 분석 파이프라인 |
+| Phase 7 | ✅ 완료 | Multi-Provider 지원 (OpenAI + Gemini) |
+
+### 🎯 향후 작업 (TODO)
+
+1. **추가 LLM Provider:** Anthropic Claude API 지원 검토
+2. **스트리밍 응답:** 긴 분석 결과의 점진적 표시
+3. **비용 추적:** API 호출별 토큰 사용량 및 비용 추정
+4. **GitHub Release:** 바이너리 배포 자동화
 
 ---
 

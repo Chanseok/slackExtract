@@ -40,21 +40,31 @@
 - [ ] **코드 구조 개선:** 패키지 의존성 정리 및 리팩토링
 
 ## Phase 6: LLM 분석 파이프라인 (LLM Analysis Pipeline)
-- [ ] **다국어 처리 (Multilingual Support):**
-  - [ ] 언어 감지 (영어/네덜란드어/기타)
-  - [ ] 비영어 메시지: 영어 번역 + 원문 병기
-  - [ ] 최종 요약은 한국어로 출력
-- [ ] **Topic 분석 (Topic Analysis):**
-  - [ ] 주요 Topic 자동 추출 (Clustering)
-  - [ ] Topic별 중요도 점수 산정 (스레드 길이, 반응 수, 키워드 기반)
-  - [ ] Topic별 핵심 요약 생성
-- [ ] **의견 분석 (Sentiment Analysis):**
-  - [ ] 긍정/부정/중립 의견 분류
-  - [ ] 주요 논쟁점 하이라이트
-- [ ] **인물 분석 (Contributor Analysis):**
-  - [ ] 인물별 Topic 참여도 통계
-  - [ ] 주요 기여자 식별
+- [x] **다국어 처리 (Multilingual Support):**
+  - [x] 언어 감지 (영어/네덜란드어/기타)
+  - [x] 비영어 메시지: 영어 번역 + 원문 병기
+  - [x] 최종 요약은 한국어로 출력
+- [x] **Topic 분석 (Topic Analysis):**
+  - [x] 주요 Topic 자동 추출 (Clustering)
+  - [x] Topic별 중요도 점수 산정 (스레드 길이, 반응 수, 키워드 기반)
+  - [x] Topic별 핵심 요약 생성
+- [x] **의견 분석 (Sentiment Analysis):**
+  - [x] 긍정/부정/중립 의견 분류
+  - [x] 주요 논쟁점 하이라이트
+- [x] **인물 분석 (Contributor Analysis):**
+  - [x] 인물별 Topic 참여도 통계
+  - [x] 주요 기여자 식별
 - [x] **파일 저장:** `export/{채널명}.md` 구조로 저장
+
+## Phase 7: LLM Provider 지원 (Multi-Provider Support)
+- [x] **OpenAI API 지원:**
+  - [x] GPT-4, GPT-4o, GPT-3.5-turbo 모델 지원
+  - [x] Custom Base URL 지원 (Azure OpenAI, 프록시 등)
+- [x] **Google Gemini API 지원:**
+  - [x] Gemini 1.5 Flash, Gemini 1.5 Pro 모델 지원
+  - [x] 직접 API 호출 (OpenAI 호환 프록시 불필요)
+  - [x] systemInstruction 및 role 매핑 구현
+- [x] **Provider 자동 감지:** `LLM_PROVIDER` 환경 변수로 전환
 
 ## Phase 3.5: 로컬 캐싱 시스템 (Local Caching)
 - [x] **사용자 캐싱:** `users.json` 파일에 사용자 목록 캐싱 (완료)
@@ -127,12 +137,12 @@
   - [x] TUI 내에서 다운로드 상태 시각화 (Progress Bar)
   - [x] 현재 처리 중인 채널 및 메시지 수 표시
   - [x] 예상 소요 시간 (ETA) 계산 및 표시
-- [ ] **채널 요약:** 채널별 주요 논의 내용 키워드 추출 또는 요약 (LLM 연동 고려)
+- [x] **채널 요약:** LLM 기반 채널 분석 및 요약 기능 구현 (Phase 6에서 구현)
 - [x] **첨부파일 처리:** 이미지 및 파일 다운로드 옵션
-- [ ] **에러 핸들링:** Rate Limit 자동 재시도 및 부분 실패 처리
+- [x] **에러 핸들링:** Rate Limit 자동 재시도 (Exponential Backoff) 구현
 - [ ] **설정 관리:** 토큰, 쿠키, 저장 경로 등을 설정 파일로 관리
 - [ ] **채널 그룹핑(Preset):** 자주 사용하는 채널 그룹을 설정 파일(`config.yaml`)로 저장/로드
 
 ## Phase 6: 배포 및 문서화 (Release)
-- [ ] `README.md` 작성 (사용법, 설치법)
+- [x] `README.md` 작성 (사용법, 설치법, LLM 설정 포함)
 - [ ] GitHub Release를 통한 바이너리 배포
