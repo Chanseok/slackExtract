@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+slack-extract
+slack-analyze
 
 # Test binary, built with `go test -c`
 *.test
@@ -19,6 +21,7 @@ go.work
 
 # Environment variables
 .env
+.env.local
 
 # Exported data
 export/
@@ -26,7 +29,6 @@ export/
 # Local Cache
 users.json
 channels.json
-.env.local
 
 # IDE specific files
 .vscode/
@@ -36,10 +38,3 @@ channels.json
 # OS specific files
 .DS_Store
 Thumbs.db
-
-# Exported data
-export/
-*.md
-!README.md
-!docs/*.md
-slack-extract
