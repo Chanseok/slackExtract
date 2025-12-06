@@ -441,6 +441,7 @@ slackExtract/
 - **CLI 도구:** `cmd/slack-analyze/main.go` - 추출된 Markdown 파일을 분석하는 CLI
 - **결과 포맷:** `export/{채널명}_analysis.md` 형태로 분석 결과 저장.
 
+
 #### 4. Google Gemini API 직접 지원 (Phase 7)
 - **배경:** OpenAI 외에 Google Gemini API도 지원하여 사용자 선택의 폭을 넓힘.
 - **구현 (`internal/llm/client.go`):**
@@ -510,20 +511,27 @@ cmd/
 
 ---
 
-## 템플릿 (복사용)
-
-```markdown
-## YYYY-MM-DD (Day N)
+## 2025-12-06 (Day 2 - Continued)
 
 ### 📋 주요 작업 내용
-- 
 
-### 🔧 기술적 결정 사항
-- 
+#### 1. Gemini 2.5 Flash 모델 연동 및 디버깅
+- **이슈:** `gemini-2.5-flash` 모델 사용 시 "no response from Gemini" 에러 발생.
+- **원인 분석:**
+  - `internal/llm/client.go`의 에러 로깅을 강화하여 확인한 결과, `FinishReason: MAX_TOKENS` 에러 발생.
+  - Gemini 2.5 Flash는 "Reasoning" 모델로, 내부적인 사고 과정(Thoughts)에 많은 토큰을 소모함.
+  - 기존의 기본 토큰 제한(약 2000~4000)으로는 분석 결과를 생성하기에 부족했음.
+- **해결:** `internal/llm/analyzer.go`에서 `MaxOutputTokens` 설정을 16,000으로 대폭 상향 조정.
+- **결과:** `project-lg-zigbee-liveness.md` 및 `project-lg-thinq-on.md` 파일 분석 성공.
 
-### ⚠️ 이슈 및 해결
-- 
+#### 2. 분석 결과 파일 구조 재정비
+- **문제:** 분석 결과 파일(`_analysis.md`)이 원본 파일과 동일한 폴더에 생성되어 관리가 어려움.
+- **결정:** `docs/DESIGN_SMART_DOWNLOAD.md`의 설계에 따라 분석 결과를 별도 폴더로 분리하기로 함.
+- **조치:**
+  - 기존 생성된 파일들을 `export/.analysis/{channel_name}/analysis.md` 경로로 이동.
+  - 향후 `slack-analyze` 도구도 이 경로에 파일을 생성하도록 수정 예정.
 
-### 🎯 다음 작업 (TODO)
-- 
-```
+#### 3. Smart Download 설계 검토
+- **검토:** `docs/DESIGN_SMART_DOWNLOAD.md` 문서를 재검토하여 현재 구현과의 차이점 확인.
+- **계획:** 분석 결과 파일 경로 수정 및 Smart Download 기능(중복 방지, 폴더 선택 등) 구현 착수.
+

@@ -70,23 +70,23 @@
 > 상세 설계: `docs/DESIGN_SMART_DOWNLOAD.md`
 
 ### 8.1 기존 파일 감지
-- [x] `export/` 하위 모든 폴더 스캔하여 기존 파일 탐지
-- [x] 채널명-파일명 매칭 로직
-- [x] 파일 메타정보 추출 (크기, 메시지 수, 마지막 날짜)
+- [ ] `export/` 하위 모든 폴더 스캔하여 기존 파일 탐지
+- [ ] 채널명-파일명 매칭 로직
+- [ ] 파일 메타정보 추출 (크기, 메시지 수, 마지막 날짜)
 
 ### 8.2 다운로드 확인 TUI
-- [x] 다운로드 전 확인 화면 표시
-- [x] 저장 폴더 선택 UI (기존 폴더 / 새 폴더 생성)
-- [x] 기존 파일 정보 및 액션 선택 (Skip/Incremental/Overwrite/Cancel)
+- [ ] 다운로드 전 확인 화면 표시
+- [ ] 저장 폴더 선택 UI (기존 폴더 / 새 폴더 생성)
+- [ ] 기존 파일 정보 및 액션 선택 (Skip/Incremental/Overwrite/Cancel)
 
 ### 8.3 증분 다운로드 (Incremental Download)
-- [x] `.md` 파일에서 마지막 메시지 타임스탬프 추출
-- [x] Slack API `oldest` 파라미터로 이후 메시지만 요청
-- [x] 기존 파일에 새 메시지 병합 (날짜 순서 유지)
+- [ ] `.md` 파일에서 마지막 메시지 타임스탬프 추출
+- [ ] Slack API `oldest` 파라미터로 이후 메시지만 요청
+- [ ] 기존 파일에 새 메시지 병합 (날짜 순서 유지)
 
 ### 8.4 Archived 채널 처리
-- [x] Archived 상태 표시 및 안내 메시지
-- [x] 이미 다운로드된 Archived 채널은 자동 Skip 권장
+- [ ] Archived 상태 표시 및 안내 메시지
+- [ ] 이미 다운로드된 Archived 채널은 자동 Skip 권장
 
 ## Phase 9: 메타데이터 시스템 (Metadata System) - 신규
 

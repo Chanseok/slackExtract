@@ -83,7 +83,32 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer) error {
 	fmt.Printf("  ✅ Found %d topics, %d contributors\n", len(result.Topics), len(result.Contributors))
 
 	// Save report
-	outputDir := filepath.Dir(filePath)
+	// Construct output directory: export/.analysis/{channelName}
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	dir := filepath.Dir(absPath)
+	var exportDir string
+	var categoryName string
+
+	// Try to find "export" directory in the path
+	if strings.HasSuffix(dir, "export") {
+		// File is directly under export/ (e.g. export/channel.md)
+		exportDir = dir
+		categoryName = "" // No category
+	} else if strings.HasSuffix(filepath.Dir(dir), "export") {
+		// File is in a subdirectory (e.g. export/category/channel.md)
+		exportDir = filepath.Dir(dir)
+		categoryName = filepath.Base(dir)
+	} else {
+		// Fallback: use current dir as base
+		exportDir = dir
+		categoryName = ""
+	}
+
+	outputDir := filepath.Join(exportDir, ".analysis", categoryName)
 	if err := llm.SaveAnalysisReport(result, outputDir); err != nil {
 		return fmt.Errorf("failed to save report: %w", err)
 	}
