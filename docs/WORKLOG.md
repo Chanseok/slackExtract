@@ -535,3 +535,20 @@ cmd/
 - **검토:** `docs/DESIGN_SMART_DOWNLOAD.md` 문서를 재검토하여 현재 구현과의 차이점 확인.
 - **계획:** 분석 결과 파일 경로 수정 및 Smart Download 기능(중복 방지, 폴더 선택 등) 구현 착수.
 
+#### 4. Smart Download 기능 구현 (Phase 8)
+- **기존 파일 감지:** `internal/manager/scanner.go` 구현. `export/` 폴더를 재귀적으로 스캔하여 기존 다운로드된 파일의 메타데이터(크기, 마지막 메시지 시간 등)를 수집.
+- **다운로드 확인 TUI:** `internal/tui/confirm.go` 구현.
+  - 채널 선택 후 Enter 입력 시 확인 화면으로 전환.
+  - 저장 폴더 선택 (기존 폴더 또는 새 폴더 생성).
+  - 기존 파일 충돌 감지 및 경고 표시.
+  - 액션 선택: Skip, Incremental, Overwrite, Cancel.
+- **증분 다운로드 (Incremental):**
+  - `internal/slack/retry.go`에 `FetchHistoryWithRetryAndProgress` 함수 추가.
+  - `oldest` 파라미터를 지원하여 기존 파일의 마지막 메시지 이후 데이터만 가져오도록 구현.
+- **폴더 구조 지원:** `export/{category}/{channel}.md` 형태의 중첩 폴더 구조 지원.
+
+#### 5. 버그 수정: 증분 다운로드 시 파일 미생성 이슈
+- **증상:** `Incremental` 모드로 다운로드 시, 대상 폴더에 파일이 없으면 에러가 발생하거나 파일이 생성되지 않음.
+- **원인:** `internal/export/export.go`에서 `appendMode`가 `true`일 경우 `os.OpenFile`을 `os.O_APPEND` 플래그로만 호출하여, 파일이 없으면 에러(`no such file or directory`) 발생.
+- **해결:** `appendMode`여도 파일이 존재하지 않으면 `appendMode = false`로 전환하여 새 파일을 생성(`os.Create`)하도록 로직 수정.
+

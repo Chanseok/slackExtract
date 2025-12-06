@@ -194,9 +194,9 @@ func (m Model) startDownloadSequence() (Model, tea.Cmd) {
 	if selectedFolder == "." {
 		m.TargetFolder = "export"
 	} else if selectedFolder == "+ New Folder" {
-		// TODO: Implement input for new folder
-		// For now fallback to export/new
-		m.TargetFolder = filepath.Join("export", "new")
+		// Create a timestamped folder for now
+		folderName := fmt.Sprintf("batch_%s", time.Now().Format("20060102_150405"))
+		m.TargetFolder = filepath.Join("export", folderName)
 	} else {
 		m.TargetFolder = filepath.Join("export", selectedFolder)
 	}
