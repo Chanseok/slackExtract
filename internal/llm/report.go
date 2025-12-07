@@ -25,6 +25,12 @@ func SaveAnalysisReport(result *AnalysisResult, outputDir string) error {
 	fmt.Fprintf(f, "# 📊 채널 분석 보고서: #%s\n\n", result.ChannelName)
 	fmt.Fprintf(f, "> **분석 일시:** %s  \n", time.Now().Format("2006-01-02 15:04:05"))
 	fmt.Fprintf(f, "> **총 메시지 수:** %d  \n", result.TotalMessages)
+	if result.StartDate != "" && result.EndDate != "" {
+		fmt.Fprintf(f, "> **대화 기간:** %s ~ %s  \n", result.StartDate, result.EndDate)
+	}
+	if result.PeakPeriod != "" {
+		fmt.Fprintf(f, "> **집중 논의 기간:** %s  \n", result.PeakPeriod)
+	}
 	if result.EstimatedCost > 0 {
 		fmt.Fprintf(f, "> **LLM 비용:** $%.4f (%d tokens)  \n", result.EstimatedCost, result.Usage.TotalTokens)
 	}
@@ -52,6 +58,10 @@ func SaveAnalysisReport(result *AnalysisResult, outputDir string) error {
 		fmt.Fprintf(f, "### %d. %s %s\n\n", i+1, topic.Name, importance)
 		fmt.Fprintf(f, "**설명:** %s\n\n", topic.Description)
 		
+		if topic.DateRange != "" {
+			fmt.Fprintf(f, "**논의 시기:** %s\n\n", topic.DateRange)
+		}
+
 		if len(topic.Keywords) > 0 {
 			fmt.Fprintf(f, "**키워드:** `%s`\n\n", strings.Join(topic.Keywords, "`, `"))
 		}

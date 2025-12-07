@@ -11,7 +11,9 @@ import (
 type AnalysisResult struct {
 	ChannelName   string
 	TotalMessages int
-	DateRange     string
+	StartDate     string // YYYY-MM-DD
+	EndDate       string // YYYY-MM-DD
+	PeakPeriod    string // YYYY-MM-DD (Day with most messages)
 	Topics        []Topic
 	Contributors  []Contributor
 	Summary       string // Korean summary
@@ -23,6 +25,7 @@ type AnalysisResult struct {
 type Topic struct {
 	Name        string
 	Description string
+	DateRange   string   // e.g. "2023-10-01 ~ 2023-10-05"
 	Importance  int      // 1-10 scale
 	MessageIDs  []string // References to messages
 	Summary     string
@@ -124,9 +127,10 @@ func (a *ChannelAnalyzer) extractTopics(content string) ([]Topic, Usage, error) 
 For each topic, provide:
 1. Topic name (short, descriptive)
 2. Brief description (1-2 sentences)
-3. Importance score (1-10, based on discussion length, participant count, urgency keywords)
-4. Key keywords (3-5 words)
-5. Sentiment breakdown (positive/negative/neutral message count estimate)
+3. Date range (e.g., "2023-10-01 ~ 2023-10-05") when this topic was discussed.
+4. Importance score (1-10, based on discussion length, participant count, urgency keywords)
+5. Key keywords (3-5 words)
+6. Sentiment breakdown (positive/negative/neutral message count estimate)
 
 Format your response as JSON:
 {
@@ -134,6 +138,7 @@ Format your response as JSON:
     {
       "name": "Topic Name",
       "description": "Brief description",
+      "date_range": "2023-10-01 ~ 2023-10-05",
       "importance": 8,
       "keywords": ["keyword1", "keyword2"],
       "sentiment": {"positive": 5, "negative": 2, "neutral": 10}
@@ -297,6 +302,7 @@ func parseTopicsFromJSON(response string) []Topic {
 		Topics []struct {
 			Name        string   `json:"name"`
 			Description string   `json:"description"`
+			DateRange   string   `json:"date_range"`
 			Importance  int      `json:"importance"`
 			Keywords    []string `json:"keywords"`
 			Sentiment   struct {
@@ -316,6 +322,7 @@ func parseTopicsFromJSON(response string) []Topic {
 		topic := Topic{
 			Name:        t.Name,
 			Description: t.Description,
+			DateRange:   t.DateRange,
 			Importance:  t.Importance,
 			Keywords:    t.Keywords,
 			Sentiments: Sentiments{

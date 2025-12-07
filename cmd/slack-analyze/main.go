@@ -160,8 +160,12 @@ func analyzeFile(filePath string, analyzer *llm.ChannelAnalyzer, mm *meta.Manage
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
-	// Count messages (rough estimate from ### headers)
-	result.TotalMessages = strings.Count(string(content), "\n### ")
+	// Calculate statistics (Date Range, Peak Period)
+	stats := calculateStats(string(content))
+	result.TotalMessages = stats.TotalMessages
+	result.StartDate = stats.StartDate
+	result.EndDate = stats.EndDate
+	result.PeakPeriod = stats.PeakPeriod
 
 	fmt.Printf("  ✅ Found %d topics, %d contributors\n", len(result.Topics), len(result.Contributors))
 
@@ -255,4 +259,58 @@ func printUsage() {
 	fmt.Println("Optional environment variables:")
 	fmt.Println("  LLM_MODEL    - Model to use (default: gpt-4o-mini)")
 	fmt.Println("  LLM_BASE_URL - API base URL (for non-OpenAI providers)")
+}
+
+type ChannelStats struct {
+	TotalMessages int
+	StartDate     string
+	EndDate       string
+	PeakPeriod    string
+}
+
+func calculateStats(content string) ChannelStats {
+	stats := ChannelStats{}
+	
+	// Regex for Date Header: ## 📅 2025-06-17
+	// Regex for Message Header: ### Name - 17:14:01
+	
+	lines := strings.Split(content, "\n")
+	var currentDate string
+	var dates []string
+	dateCounts := make(map[string]int)
+	
+	for _, line := range lines {
+		if strings.HasPrefix(line, "## 📅 ") {
+			currentDate = strings.TrimPrefix(line, "## 📅 ")
+			currentDate = strings.TrimSpace(currentDate)
+		} else if strings.HasPrefix(line, "### ") && strings.Contains(line, " - ") {
+			// It's a message header
+			stats.TotalMessages++
+			if currentDate != "" {
+				dates = append(dates, currentDate)
+				dateCounts[currentDate]++
+			}
+		}
+	}
+
+	if len(dates) > 0 {
+		stats.StartDate = dates[0]
+		stats.EndDate = dates[len(dates)-1]
+	}
+
+	// Find Peak Period (Day with most messages)
+	maxCount := 0
+	peakDate := ""
+	for date, count := range dateCounts {
+		if count > maxCount {
+			maxCount = count
+			peakDate = date
+		}
+	}
+	
+	if peakDate != "" {
+		stats.PeakPeriod = fmt.Sprintf("%s (%d messages)", peakDate, maxCount)
+	}
+
+	return stats
 }
